@@ -10,17 +10,6 @@ from http import Request, get_request, print_request
 from route import routes, static_search, handle_post_method
 from error import handle_400, handle_404, handle_408, handle_500
 
-"""
-	POST, GETメソッドに対応したサーバー
-
-	02-03:	multipart/form-dataのヘッダー取得まで記述
-			- 9時まで待ってclaude codeにもう一度プロンプトを送る
-
-			1. POSTメソッドの際にエンコーディング方式を確認(get_request)
-			2. multipart/form-data;の場合、専用関数に移行(get_form_data)
-			3. 各パートに分割し、保存・出力
-
-"""
 
 client_count = 0
 lock = threading.Lock()
