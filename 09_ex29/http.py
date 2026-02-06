@@ -1,0 +1,147 @@
+import re
+import socket
+import logging
+from urllib.parse import urlparse, parse_qs
+
+import config
+
+config.setup_logging()
+
+class Request:
+	def	__init__(self):
+		self.method = None
+		self.path = None
+		self.version = None
+		self.type = None
+		self.boundary = None
+		self.length = None
+		self.query = {}
+		self.body = {}
+
+def	parse_http(http_line: str, request_obj: Request) -> bool:
+	parts = http_line.split()
+	if len(parts) != 3:
+		return False
+
+	request_obj.method = parts[0]
+	request_obj.version = parts[2]
+
+	url = urlparse(parts[1])
+	request_obj.path = url.path
+	request_obj.query = parse_qs(url.query)
+
+	return True
+
+def	get_form_data(body_part: bytes, request_obj: Request) -> int:
+	boundary_bytes = request_obj.boundary.encode('utf-8')	# body_partはバイト列なのでboundaryをエンコード
+	parts = body_part.split(boundary_bytes)					# エンコードしたboundaryでsplit
+
+	for boundary_part in parts[1:]:							# 最初は"--"で始まるので飛ばす
+		line = boundary_part.split(b'\r\n\r\n')
+		line[0] = line[0].decode('utf-8', errors='replace').strip('\r\n')	# 正規表現を使うためにname=列だけデコード
+
+		if line[0].strip('\r\n') == '--':
+			break
+
+		matched = re.search(r'name="(\w+)"', line[0])		# nameを捕捉
+		if matched:
+			request_obj.body[matched.group(1)] = line[1]	# Requestオブジェクトに保存
+
+
+def	get_request(client_socket, request_obj) -> int:
+	## ヘッダー終了までバッファ
+	buffer = b''
+	while not b'\r\n\r\n' in buffer:
+		buffer += client_socket.recv(config.BUFFER_SIZE)
+		if buffer == b'':	# バッファが空ならループ終了
+			break
+		if config.MAX_READ < len(buffer):	# 見つからなければ終了
+			logging.error('get_request: Request header is too long')
+			return
+	logging.debug('get_request: found header end')
+
+	# ヘッダーとボディを分割
+	header_end = buffer.find(b'\r\n\r\n')	# ヘッダー終了文字のインデックスを捜索
+	headers = buffer[:header_end]			# ヘッダー部分を保存
+	body_part = buffer[header_end + 4:]			# ボディ部分を保存
+	logging.debug('get_request: got raw header data')
+
+	# ヘッダーをデコード
+	headers = headers.decode('utf-8', errors='replace')
+	logging.debug('get_request: decoded raw header data')
+
+	# httpリクエストを分解
+	header_line = headers.split('\r\n')
+	if not parse_http(header_line[0], request_obj):		# parse_httpでリクエスト最上部をパース
+		logging.error('get_request: Cannot parse http request')
+		return -1
+	logging.debug('get_request: got http request in header')
+
+	# GETメソッドならここで終了
+	if request_obj.method == 'GET':
+		return 0
+	logging.debug('get_request: request is GET method')
+
+	# Content-Type, Lengthを保存
+	for header in header_line[1:]:
+		if 'Content-Type' in header:
+			request_obj.type = header.split()[1].strip()
+			if request_obj.type == 'multipart/form-data;':	# multipart/form-dataならboundary文字列を取得
+				boundary_start = header.find('boundary=')
+				request_obj.boundary = header[boundary_start + len('boundary='):]
+		if 'Content-Length' in header:
+			request_obj.length = header.split(':')[1].strip()	# int変換するとprint_requestでエラーになる
+
+	# ボディ長・タイプが取得できなければエラー
+	if request_obj.length is None or request_obj.type is None:
+		logging.error('get_request: Cannot find Content-Length')
+		return -1
+	logging.debug('get_request: got Content-Type and Content-Length')
+
+	# 残りのボディ読み込み
+	buffer = client_socket.recv(int(request_obj.length) - len(body_part))
+	body_part += buffer
+	logging.debug('get_request: latest body_part is loaded')
+
+	# 単なるPOSTメソッドならボディをデコード・パースして保存
+	if request_obj.method == 'POST' and request_obj.type == 'application/x-www-form-urlencoded':
+		logging.debug('get_request: method=POST, Type=application/x-www-form-urlencoded')
+		body_part = body_part.decode('utf-8', errors='replace')
+		request_obj.body = parse_qs(body_part)
+		return 0
+
+	"""
+	form-dataの処理への移行
+		1.	Content-TypeとLengthを保存
+		2.	残りのデータをbody_partに保存
+
+		get_form_dataを呼び出し
+		- body_partとrequest_objを渡す
+
+	"""
+	# multipart/form-dataならget_form_data関数を呼び出し
+	if request_obj.method == 'POST' and request_obj.type == 'multipart/form-data;':
+		logging.debug('get_request: method=POST, Type=multipart/form-data;')
+		get_form_data(body_part, request_obj)
+
+
+def	print_request(request_obj):
+	logging.info('===== Request Details =====')
+	logging.info(f'{"method":<10}:{request_obj.method:>25}')
+	logging.info(f'{"Path":<10}:{request_obj.path:>25}')
+	logging.info(f'{"Version":<10}:{request_obj.version:>25}')
+	logging.info(f'{"Type":<10}:{request_obj.type:>25}')
+	if request_obj.type == 'multipart/form-data;':
+		logging.info(f'{"Boundary":<10}:')
+		logging.info(f'\t{request_obj.boundary}')
+	logging.info('Query:')
+	for label, detail in request_obj.query.items():
+		detail = ','.join(detail)
+		logging.info(f'\t{label}:{detail}')
+	logging.info('Request Body:')
+	for label, detail in request_obj.body.items():
+		if isinstance(detail, bytes):
+			logging.info(f'\t{label}: len={len(detail)}')
+			continue
+		detail = ','.join(detail)
+		logging.info(f'\t{label}:{detail}')
