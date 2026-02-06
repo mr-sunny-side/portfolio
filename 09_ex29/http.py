@@ -32,7 +32,7 @@ def	parse_http(http_line: str, request_obj: Request) -> bool:
 
 	return True
 
-def	get_form_data(body_part: bytes, request_obj: Request) -> int:
+def	get_form_data(body_part: bytes, request_obj: Request):
 	boundary_bytes = request_obj.boundary.encode('utf-8')	# body_partはバイト列なのでboundaryをエンコード
 	parts = body_part.split(boundary_bytes)					# エンコードしたboundaryでsplit
 
