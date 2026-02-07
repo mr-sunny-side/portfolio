@@ -1,8 +1,11 @@
+#!/usr/bin/env python3
+
 import socket
 import threading
 import logging
 
 import config
+from http_parse import Request, get_request, print_request
 
 lock = threading.Lock()
 config.setting_logging()
@@ -10,7 +13,8 @@ config.setting_logging()
 client_count = 0
 
 """
-	02-06:	parse_http関数の記述、get_request関数の記述から
+	02-06:	リクエストの取得まで完了
+			- responseクラスの記述から
 
 """
 
@@ -26,6 +30,12 @@ def	handle_client(client_socket, client_address):
 		logging.info(f'handle_client: {client_address[0]}:{client_address[1]}')
 
 		# get_request呼び出し
+		request_obj = Request()
+		if not get_request(client_socket, request_obj):
+			raise ValueError
+
+		print_request(request_obj)
+
 	except ValueError:
 		logging.exception('handle_client: ValueError')
 
@@ -66,3 +76,6 @@ def	run_server(host=config.LOCAL_HOST, port=config.PORT):
 	finally:
 		server_socket.close()
 		logging.info('Server closed')
+
+if __name__ == '__main__':
+	run_server()
