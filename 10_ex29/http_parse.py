@@ -36,7 +36,7 @@ def	get_boundary(request_obj: Request) -> bool:
 	if len(parts) != 2:
 		return False
 
-	request_obj.type = parts[0].rstrip('\r\n')
+	request_obj.type = parts[0]
 	boundary_part = parts[1]
 
 	boundary_start = boundary_part.find('boundary=')
@@ -50,13 +50,13 @@ def	get_type_length(header_lines, request_obj: Request) -> bool:
 	for header in header_lines:
 		# content-typeを保存
 		if header.startswith('Content-Type:'):
-			request_obj.type = header.split(':')[1].lstrip().rstrip('\r\n')
+			request_obj.type = header.split(':')[1].lstrip()
 			# boundaryがある場合、boundaryを保存
 			if 'multipart/form-data;' in request_obj.type:
 				return False if not get_boundary(request_obj) else True
 		# content-lengthを保存
 		if header.startswith('Content-Length:'):
-			request_obj.length = int(header.split(':')[1].lstrip().rstrip('\r\n'))
+			request_obj.length = int(header.split(':')[1].lstrip())
 
 	if request_obj.type is None or request_obj.length is None:
 		logging.debug('get_type_length: Cannot found type or length')
@@ -75,7 +75,7 @@ def	get_form_data(body_part: bytes, request_obj: Request):
 		matched = re.search(r'name="(\w+)"', form_parts[0])				# descriptionからnameを捕捉
 		if matched:
 			name = matched.group(1)										# request.bodyに保存。keyはname=をデコードしたもの
-			request_obj.body[name] = form_parts[1].rstrip(b'\r\n')					# データ本体は\r\nをstrip()して保存
+			request_obj.body[name] = form_parts[1].rstrip(b'\r\n')		# データ本体は\r\nをstrip()して保存
 
 def	get_request(client_socket, request_obj: Request) -> bool:
 	# ヘッダー終了まで読み込み
