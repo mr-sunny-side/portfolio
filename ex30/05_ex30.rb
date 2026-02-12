@@ -19,9 +19,12 @@ def mbox_parser(file_path)
 
   File.open(file_path, "r") do |f|
     f.each_line do |line|
+      if line.start_with?("From ")
+        cur_data = {}
+        next
+      end
       next unless target.any?{|h| line.start_with?(h)}
 
-      cur_data = {}
       value = line.split(':', 2)[1].strip
 
       # 各ヘッダーごとの処理・カレントハッシュに保存
@@ -69,4 +72,8 @@ def main()
   end
 
   return 0
+end
+
+if __FILE__ == $0
+  main
 end
