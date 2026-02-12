@@ -1,5 +1,10 @@
 #!/usr/bin/env ruby
 
+"""
+  02-12: フィルタリングの実装から
+
+"""
+
 require 'nkf'
 require 'time'
 require 'json'
@@ -16,10 +21,16 @@ def mbox_parser(file_path)
     "Subject: "
   ]
   sender_list = []
+  cur_data = nil
 
   File.open(file_path, "r") do |f|
     f.each_line do |line|
+
+      # 先頭行だったらdictの存在を確認してlistに保存
       if line.start_with?("From ")
+        if cur_data && !cur_data.empty?   # 要するにちゃんとあるか確認して追加することが重要
+          sender_list << cur_data
+        end
         cur_data = {}
         next
       end
@@ -39,12 +50,14 @@ def mbox_parser(file_path)
         cur_data['Subject'] = decoded_sub
       end
 
-      sender_list << cur_data
 
     end
   end
+  if cur_data && !cur_data.empty?
+    sender_list << cur_data
+  end
 
-  sender_list
+  sender_list = sender_list.sort_by {|mail| mail['Date']} # 最後に.reverseメソッドを呼べば降順にできる
 end
 
 def main()
@@ -63,6 +76,7 @@ def main()
   end
 
   # オプションの実装
+
   sender_list = mbox_parser(file_path)
   sender_list.each do |sender_data|
     puts "---"
