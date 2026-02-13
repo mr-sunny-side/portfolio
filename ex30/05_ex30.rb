@@ -84,14 +84,31 @@ def main()
   sender_list = mbox_parser(file_path)
   filtered = sender_list
   if sender_fil
-    filtered = sender_list.select{|email| email['From'] == sender_fil}
+    # filterはコンマで複数指定できるので、分割
+    filter_pattern = sender_fil.split(',').map(&:strip)   # filter_pattern.map{|pattern| pattern.strip}の省略
+
+    # 各フィルターをエスケープしてコンパイル
+    patterns = []
+    filter_pattern.each do |filter_str|
+      begin
+        safe_pattern = Regexp.escape(filter_str)          # フィルター内容をエスケープ
+        patterns << Regexp.new(safe_pattern, Regexp::IGNORECASE)    # ケース不問でコンパイルして、patternリストに追加
+      rescue RegexpError => e
+        puts "ERROR: Invalid filter pattern #{filter_str}: #{e.message}"
+        return -1
+      end
+
+      # 完成した条件でフィルター
+      filtered = sender_list.select do |email|
+        patterns.any?{|pattern| pattern =~ email['From']}
+      end
+    end
+
   end
 
   filtered.each do |sender_data|
     puts "---"
-    sender_data.each do |key, value|
-      puts "#{key}: #{value}"
-    end
+    sender_data.each {|key, value| puts "#{key}: #{value}"}
   end
 
   return 0
