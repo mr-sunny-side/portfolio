@@ -1,7 +1,8 @@
 #!/usr/bin/env ruby
 
 """
-  02-13: main関数でメソッドチェーンの実装から
+  02-13:  06_ex30.mdを読むところから
+          - エラー6 loggerの修正から
 
 """
 
@@ -57,6 +58,7 @@ def make_pattern(raw_filter)
     filter_list.each do |filter|
       safe_filter = Regexp.escape(filter)                   # まずエスケープ
       pattern << Regexp.new(safe_filter, Regexp::IGNORECASE)# コンパイルして保存
+    end
   rescue RegexpError => e
     logger.error("make_pattern: Invalid filter")
     logger.error(e.full_message)
@@ -66,7 +68,7 @@ def make_pattern(raw_filter)
 end
 
 def main()
-  unless 2 <= ARGV.length
+  unless 1 <= ARGV.length
     logger.error("Usage: ./[This file] [.mbox] [filter option]")
     logger.error("filter Option: filtering address. You can input multiple addresses to ','")
     exit -1
@@ -85,19 +87,23 @@ def main()
   end
 
   emails_list = mbox_parser(file_path)
-  logger.info("Extract #{email_list.size} addresses")
+  logger.info("Extract #{emails_list.size} addresses")
 
   # メソッドチェーンを実装
-  if pattern
-    filtered_list = emails_list.select do |email|   # selectでemails_listからemailを取り出す
+  target_list = if pattern
+    filtered = emails_list.select do |email|   # selectでemails_listからemailを取り出す
       pattern.any?{|p| p.match(email[:from])}       # emailがpatternとマッチするか検証
     end
+    logger.info("Filtered to #{filtered.size} addresses")
+    filtered
+  else
+    emails_list
   end
-  logger.info("Filtered to #{filtered list.size} addresses")
 
-  uniq_list = filter_list.uniq.sort
+  uniq_list = target_list.map{|email| email[:from]}.uniq.sort
   logger.info("Removed duplicate, #{uniq_list.size} unique addresses")
   logger.info("Sorted alphabetically")
+
 
   logger.info("Result:")
   uniq_list.each{|sender| logger.info(sender)}
