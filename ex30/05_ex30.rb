@@ -49,10 +49,9 @@ def mbox_parser(file_path)
         decoded_sub = NKF.nkf("-w", value)
         cur_data['Subject'] = decoded_sub
       end
-
-
     end
   end
+
   if cur_data && !cur_data.empty?
     sender_list << cur_data
   end
@@ -63,8 +62,7 @@ end
 def main()
   unless 1 <= ARGV.length
     puts "Usage: ./[This file] [.mbox] [option]"
-    puts "Option: -r, --read: put results in shell"
-    puts "Option: -f, --filter: filter sender address"
+    puts "Option: --filter: filter sender address"
     return -1
   end
 
@@ -75,10 +73,21 @@ def main()
     return -1
   end
 
-  # オプションの実装
+  # filterオプションの実装
+  sender_fil = nil
+  sender_idx = ARGV.index('--filter')
+  if sender_idx && ARGV[sender_idx + 1]
+    sender_fil = ARGV[sender_idx + 1]
+  end
 
+  # sender_listを事前にフィルター
   sender_list = mbox_parser(file_path)
-  sender_list.each do |sender_data|
+  filtered = sender_list
+  if sender_fil
+    filtered = sender_list.select{|email| email['From'] == sender_fil}
+  end
+
+  filtered.each do |sender_data|
     puts "---"
     sender_data.each do |key, value|
       puts "#{key}: #{value}"
@@ -89,5 +98,5 @@ def main()
 end
 
 if __FILE__ == $0
-  main
+  main()
 end
