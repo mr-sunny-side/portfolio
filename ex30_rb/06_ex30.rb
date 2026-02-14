@@ -9,8 +9,13 @@
 require 'logger'
 require 'nkf'
 
-logger = Logger.new(STDERR)
-logger.level = Logger::DEBUG
+LOG = Logger.new(STDERR)    # グローバル変数は大文字でないと使えない
+LOG.level = Logger::DEBUG
+LOG.formatter = proc do |severity, datetime, progname, msg|
+  "[#{severity}] #{msg}\n"
+end
+# 出力: [INFO] Extract 702 addresses
+
 
 # アドレスと件名をセットにしたリストを作成
 def mbox_parser(file_path)
@@ -60,8 +65,8 @@ def make_pattern(raw_filter)
       pattern << Regexp.new(safe_filter, Regexp::IGNORECASE)# コンパイルして保存
     end
   rescue RegexpError => e
-    logger.error("make_pattern: Invalid filter")
-    logger.error(e.full_message)
+    LOG.error("make_pattern: Invalid filter")
+    LOG.error(e.full_message)
   end
 
   pattern
@@ -69,14 +74,14 @@ end
 
 def main()
   unless 1 <= ARGV.length
-    logger.error("Usage: ./[This file] [.mbox] [filter option]")
-    logger.error("filter Option: filtering address. You can input multiple addresses to ','")
+    LOG.error("Usage: ./[This file] [.mbox] [filter option]")
+    LOG.error("filter Option: filtering address. You can input multiple addresses to ','")
     exit -1
   end
 
   file_path = ARGV[0]
   unless File.exist?(file_path)
-    logger.error("File is not exist")
+    LOG.error("File is not exist")
     exit -1
   end
 
@@ -87,26 +92,27 @@ def main()
   end
 
   emails_list = mbox_parser(file_path)
-  logger.info("Extract #{emails_list.size} addresses")
+  LOG.info("Extract #{emails_list.size} addresses")
 
   # メソッドチェーンを実装
   target_list = if pattern
     filtered = emails_list.select do |email|   # selectでemails_listからemailを取り出す
       pattern.any?{|p| p.match(email[:from])}       # emailがpatternとマッチするか検証
     end
-    logger.info("Filtered to #{filtered.size} addresses")
+    LOG.info("Filtered to #{filtered.size} addresses")
     filtered
   else
     emails_list
   end
 
-  uniq_list = target_list.map{|email| email[:from]}.uniq.sort
-  logger.info("Removed duplicate, #{uniq_list.size} unique addresses")
-  logger.info("Sorted alphabetically")
+  # compactでnilを除外して実行
+  uniq_list = target_list.map{|email| email[:from]}.compact.uniq.sort   # from: 行がないメールによって、nilが紛れ込む
+  LOG.info("Removed duplicate, #{uniq_list.size} unique addresses")
+  LOG.info("Sorted alphabetically")
 
 
-  logger.info("Result:")
-  uniq_list.each{|sender| logger.info(sender)}
+  LOG.info("Result:")
+  uniq_list.each{|sender| LOG.info(sender)}
 end
 
 if __FILE__ == $0
