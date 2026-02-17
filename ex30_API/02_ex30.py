@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, abort
 
 app = Flask(__name__)
 
@@ -32,10 +30,43 @@ def	handle_items():
 		- 保存してあるitemsを返す(json)
 
 	"""
+
+	global next_id
+	if request.method == 'POST':
+		data = request.json
+
+		new_item = {
+			'id': next_id,
+			'name': data.get('name'),
+			'price': data.get('price')
+		}
+
+		items.append(new_item)
+		next_id += 1
+
+		return jsonify(new_item), 201
+	else:
+		return jsonify(items)
+
 @app.route('/items/<int:id>')
-def	handle_id():
+def	handle_id(id):
 	"""
 	next関数を使って、idに一致するitemを返す
 		- 無ければabortで404を発生させる
 
+	# ポイント
+		- リスト内包表記だと、有無を言わさず全件検証する
+		- ジェネレータだったら、nextで呼んだら一件ずつ検証 & 一致したら終わる
+		- 結果は一意なので、ジェネレータのほうが効率的
+
 	"""
+	gen = (item for item in items if item.get('id') == id)	# この時点では動作していない(リスト内包表記ではないから)
+	item = next(gen, None)									# ここでnextにジェネレータ式が呼ばれる
+
+	if item is None:
+		abort(404)
+
+	return jsonify(item)
+
+if __name__ == '__main__':
+	app.run(port=8080, debug=True)
