@@ -33,9 +33,9 @@ db = SQLAlchemy(app)
 class Item(db.Model):
 	__tablename__ = 'items'
 
-	id		= db.column(db.Integer, primary_key=True)	# int型のカラムを作成、primary_keyに設定
-	name	= db.column(db.String(100), nullable=False) # string型で作成。intは文字数だが、ただの目安
-	price	= db.column(db.Integer, nullable=False)
+	id		= db.Column(db.Integer, primary_key=True)	# int型のカラムを作成、primary_keyに設定
+	name	= db.Column(db.String(100), nullable=False) # string型で作成。intは文字数だが、ただの目安
+	price	= db.Column(db.Integer, nullable=False)
 
 	def	to_dict(self):
 		return ({"id": self.id, "name": self.name, "price": self.price})
