@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, abort
 from flask_sqlalchemy import SQLAlchemy
 
 """
-	02-19:	実装の解説を見るところから
+	02-19:	プログラムのテストから
 
 """
 
@@ -86,6 +86,6 @@ def	handle_pick_items(id):
 
 if __name__ == '__main__':
 	# アプリの文脈下でしかdbは操作できない
-	with app.app_context():
+	with app.app_context():	# これがよくわからない
 		db.create_all()		# db.Modelを継承したクラスを探してテーブルを作成
 	app.run(port=8080, debug=True)
