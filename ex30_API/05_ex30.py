@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URL'] = 'sqlite:///05_ex30.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///05_ex30.db'
 db = SQLAlchemy(app)
 
 class Item(db.Model):
@@ -14,7 +14,7 @@ class Item(db.Model):
 	price	= db.Column(db.Integer, nullable=False)
 
 	def	to_dict(self):
-		return {'id': self.id, 'name': self.name, 'price':self.price}
+		return {'id': self.id, 'name': self.name, 'price': self.price}
 
 @app.route('/')
 def	handle_index():
@@ -50,6 +50,28 @@ def	handle_all_items():
 def	handle_one_item(id):
 	item = Item.query.get_or_404(id)
 	return jsonify(item.to_dict())
+
+@app.route('/items/<int:id>', methods=['DELETE', 'PUT'])
+def	handle_change_item(id):
+	item = Item.query.get_or_404(id)
+
+	if request.method == 'DELETE':
+		db.session.delete(item)
+		db.session.commit()
+		return jsonify({id: 'DELETE'})
+	elif request.method == 'PUT':
+		data = request.json
+		if not data or \
+			'name' not in data or 'price' not in data:
+			abort(400)
+
+		item.name = data['name']
+		item.price = data['price']
+
+		db.session.add(item)
+		db.session.commit()
+
+		return jsonify(item.to_dict())
 
 if __name__ == '__main__':
 	with app.app_context():
