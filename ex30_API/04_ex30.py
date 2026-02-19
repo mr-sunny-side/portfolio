@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, abort
 from flask_sqlalchemy import SQLAlchemy
 
 """
-	02-19:	プログラムのテストから
+	02-19:	notionで概念の復習から
 
 """
 
