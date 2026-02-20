@@ -18,6 +18,10 @@ class Item(db.Model):
 	def	to_dict(self):
 		return {'id': self.id, 'name': self.name, 'price': self.price}
 
+@app.errorhandler(400)
+def	json_error(e):	# エラーオブジェクトを必ず受け取る
+	return jsonify({'error': 'invalid json format'})
+
 @app.route('/')
 def	handle_index():
 	return jsonify({'message': 'hello flask !'})
@@ -28,11 +32,13 @@ def	handle_echo(text):
 
 @app.route('/items', methods=['POST'])
 def	create_items():
-	data = request.json
+	data = request.get_json(silent=False)	# エラー検出にはget_json
 
 	if not data or \
 		'name' not in data or 'price' not in data:
 		abort(400)
+	elif data['name'] == "" or data['price'] < 0:
+		return jsonify({'error': 'invalid input'}), 400
 
 	# レコードを作成
 	item = Item(name=data['name'], price=data['price'])
@@ -59,10 +65,13 @@ def	change_items(id):
 		db.session.commit()
 		return jsonify({id: 'DELETE'})
 	elif request.method == 'PUT':
-		data = request.json
+		data = request.get_json(silent=False)
 		if not data or \
 			'name' not in data or 'price' not in data:
 			abort(400)
+		elif data['name'] == "" or data['price'] < 0:
+			return jsonify({'error': 'invalid input'}), 400
+
 
 		item.name = data['name']
 		item.price = data['price']
