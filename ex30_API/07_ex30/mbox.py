@@ -7,10 +7,14 @@ from email.utils import parsedate_to_datetime
 
 """
 	02-20:	結果の表示テストから
+			- create_jsonでjsonに変換できる
+			- テスト用にmail_dataを定義しているので注意
+
 
 """
 
 domain_dict = {}
+mail_data = '/home/kimetenai/portfolio/_mbox/google.mbox'
 
 def	set_log():
 	logging.basicConfig(
@@ -74,13 +78,47 @@ def	parse_datetime(raw_date: str) -> object | None:
 		logging.exception("parse_datetime/mbox.py: cannot parse datetime line")
 		return None
 
+def	print_result(result: dict):
+	print()
+	print("===== 最も頻繁に受信したドメイン =====")
+	for domain, count in result['top3_count_domain']:
+		print(f"{domain:<50}:{count:>5}")
+	print()
+	print("===== 最も頻繁に受信した件名 =====")
+	for sub, count in result['top3_count_subject']:
+		print(f"{sub:<50}:{count:>5}")
+	print()
+	print("===== 最も受信期間が長いドメイン=====")
+	for domain, days in result['top3_interval']:
+		print(f"{domain:<50}:{days:>5}")
+	print()
+
+def	create_json(result: dict) -> dict:
+	json_result = {
+		'top3_count_domain': [
+			{domain: count}
+			for domain, count in result['top3_count_domain']
+		],
+		'top3_count_subject': [
+			{sub: count}
+			for sub, count in result['top3_count_subject']
+		],
+		'top3_interval': [
+			{domain: interval}
+			for domain, interval in result['top3_interval']
+		]
+	}
+
+	return json_result
+
+
 def	mbox_main(mail_data):
 	set_log()
 	mbox = mailbox.mbox(mail_data)
 
 	for mail in mbox:
 		# domainをパース
-		addr = parseaddr(mail['from'])
+		_, addr = parseaddr(mail['from'])
 		if not addr:
 			logging.error('mbox_main/mbox.py: cannot parse address')
 			logging.error(f'from line: {mail['from']}')
@@ -116,17 +154,44 @@ def	mbox_main(mail_data):
 	)[:3]
 
 	# 最も多かった件名 3つ
-	top3_subject = sorted(
-		domain_dict.items(),
-		key=lambda x: x[1].subject,
+	all_sub = {}
+	for domain, domain_data in domain_dict.items():
+		for sub, count in domain_data.subject.items():
+			# ドメイン違いの件名は合計する
+			all_sub[sub] = all_sub.get(sub, 0) + count
+
+	top3_sub = sorted(
+		all_sub.items(),
+		key=lambda x: x[1],
 		reverse=True
 	)[:3]
 
-	# 最も長い期間受信していたドメインと日数 3つ
+	# 最も長い期間受信していたドメイン 3つ
 	top3_interval = sorted(
 		domain_dict.items(),
-		key=lambda x: x[1].timedelta,
+		key=lambda x: x[1].timedelta.days \
+			if x[1].timedelta else 0,	# timedeltaがnoneの場合、0とする
 		reverse=True
 	)[:3]
 
-	# jsonとして保存
+	# jsonとして保存(リスト内包表記)
+	result = {
+		'top3_count_domain': [
+			(domain, domain_data.count)
+			for domain, domain_data in top3_count_domain
+		],
+		'top3_count_subject': [
+			(subject, count)
+			for subject, count in top3_sub
+		],
+		'top3_interval': [
+			(domain, domain_data.timedelta.days)	# daysでないと表示できない
+			for domain, domain_data in top3_interval
+		]
+	}
+
+	return result
+
+if __name__ == '__main__':
+	result = mbox_main(mail_data)
+	print_result(result)
