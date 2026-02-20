@@ -24,6 +24,7 @@ class	DomainData:
 		self.subject	= defaultdict(int)	# 初期値が自動で0になる
 		self.first_date	= None
 		self.last_date	= None
+		self.timedelta = None
 
 	def	add_date(self, date_obj):
 		# 始めてdate_objを受け取った場合、それを保存
@@ -36,6 +37,10 @@ class	DomainData:
 			self.first_date = date_obj
 		elif self.last_date < date_obj:
 			self.last_date = date_obj
+
+	def	create_timedelta(self):
+		if self.first_date and self.last_date:
+			self.timedelta = self.last_date - self.first_date
 
 def	parse_domain(addr: str) -> str:
 	try:
@@ -100,6 +105,28 @@ def	mbox_main(mail_data):
 			continue
 		domain_data.add_date(date_obj)
 
-# 最も頻繁な受信があったドメイン 3つ
-# 最も多かった件名 3つ
-# 最も長い期間受信していたドメインと日数 3つ
+		# 受信期間を更新
+		domain_data.create_timedelta()
+
+	# 最も頻繁な受信があったドメイン 3つ
+	top3_count_domain = sorted(
+		domain_dict.items(),
+		key=lambda x: x[1].count,
+		reverse=True
+	)[:3]
+
+	# 最も多かった件名 3つ
+	top3_subject = sorted(
+		domain_dict.items(),
+		key=lambda x: x[1].subject,
+		reverse=True
+	)[:3]
+
+	# 最も長い期間受信していたドメインと日数 3つ
+	top3_interval = sorted(
+		domain_dict.items(),
+		key=lambda x: x[1].timedelta,
+		reverse=True
+	)[:3]
+
+	# jsonとして保存
