@@ -1,8 +1,14 @@
 """
-	02-21: Enumクラスの理解から(ex自体は完了)
+	02-21:
 
 """
 from fastapi import FastAPI
+from enum import Enum
+
+class ModelName(str, Enum):
+	apple = "apple"
+	orange = "orange"
+	banana = "banana"
 
 app = FastAPI()
 
@@ -26,3 +32,12 @@ async def	handle_me():
 @app.get('/items/{id}')
 async def	handle_items(id: int):
 	return {"item_id": id}
+
+@app.get('/fruits/{fruit}')
+async def	handle_fruits(fruit: ModelName):
+	if fruit.value == "apple":
+		return {"message": "apple"}
+	elif fruit.value == "orange":
+		return {"message": "orange"}
+
+	return {"message": "banana"}
