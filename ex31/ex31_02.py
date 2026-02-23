@@ -38,7 +38,7 @@ async def	add_items(item: Item):
 
 @app.get("/items")
 async def	all_items(skip: int = 0, limit: int = 10):	#デフォルト値を設定して、入力なしに対応
-	return	items
+	return	items[skip : skip + limit]					# limitは表示する件数なので加算する
 
 @app.get("/items/{id}")
 async def	one_items(id: int):
