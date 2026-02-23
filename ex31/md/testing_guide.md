@@ -91,53 +91,15 @@ print(response.json())         # {"message": "Hello FastAPI !"}
 
 ---
 
-## 4. ファイル名が数字始まり問題
-
-Python は数字で始まるファイル名を `import` できない。
-
-```python
-import 02_ex31   # エラー！ (SyntaxError)
-```
-
-回避策として `importlib` を使う。難しく見えるが「数字始まりのファイルを読み込むおまじない」と覚えておけばよい。
-
-```python
-import importlib.util
-
-# ファイルを指定して読み込む
-spec = importlib.util.spec_from_file_location(
-    "app_module",                                    # Python 内での呼び名（何でもよい）
-    "/home/kimetenai/portfolio/ex31/02_ex31.py"      # ファイルの絶対パス
-)
-app_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(app_module)
-
-# 読み込んだモジュールから app を取り出す
-app = app_module.app
-```
-
-> **補足**: `02_ex31.py` を `ex31_02.py` に名前変更すれば `from ex31_02 import app` で普通に書ける。
-
----
-
-## 5. 最初のテストファイルを書く
+## 4. 最初のテストファイルを書く
 
 ここまでの知識でテストを書ける。
 
 ```python
-# test_02_ex31.py
+# test_ex31_02.py
 
-import importlib.util
 from starlette.testclient import TestClient
-
-# --- 02_ex31.py を読み込む ---
-spec = importlib.util.spec_from_file_location(
-    "app_module",
-    "/home/kimetenai/portfolio/ex31/02_ex31.py"
-)
-app_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(app_module)
-app = app_module.app
+from ex31_02 import app          # ex31_02.py の app を読み込む
 
 # --- TestClient を作る ---
 client = TestClient(app)
@@ -276,16 +238,17 @@ def test_missing_price():
 
 ```python
 import pytest
+import ex31_02                   # グローバル変数にアクセスするためにモジュールごと import
 
 @pytest.fixture(autouse=True)    # autouse=True = 全テストに自動で適用
 def reset_state():
     # --- テスト前 ---
-    app_module.items.clear()     # items を空にする
-    app_module.item_id = 0       # id カウンターをリセット
+    ex31_02.items.clear()        # items を空にする
+    ex31_02.item_id = 0          # id カウンターをリセット
     yield                        # ← ここでテスト本体が実行される
     # --- テスト後 ---
-    app_module.items.clear()     # テスト後もリセット
-    app_module.item_id = 0
+    ex31_02.items.clear()        # テスト後もリセット
+    ex31_02.item_id = 0
 ```
 
 `autouse=True` を付けると、全テスト関数に自動で適用される。
