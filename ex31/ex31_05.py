@@ -1,36 +1,32 @@
 """
-	02-23:
+	02-23: ex31_05の実装から
 
 """
-
 from fastapi import FastAPI, Query, Path
-from pydantic import BaseModel, Field
 from typing import Annotated
+from pydantic import BaseModel, Field
 
 app = FastAPI()
 item_id = 1
 items = []
 
-# 列挙型への変更
 class Item(BaseModel):
 	name: str = Field(min_length=1)
 	price: int = Field(ge=0)
 	tax: float = Field(default=0, ge=0)
 
 class ItemResponse(BaseModel):
-	id: int = Field(ge=1)
-	name: str = Field(min_length=1)
-	price: int = Field(ge=0)
-	tax: float = Field(default=0, ge=0)
+	id: int
+	name: str
+	price: int
+	tax: float
 
 @app.get("/")
 async def handle_index():
 	return {"message": "Hello FastAPI !"}
 
 @app.get("/echo/{text}")
-async def handle_echo(
-	text: Annotated[str, Path(min_length=1)]
-):
+async def handle_echo(text: Annotated[str, Path(min_length=1)]):
 	return {"echo": text}
 
 @app.post("/items", response_model=ItemResponse, status_code=201)
@@ -46,13 +42,13 @@ async def handle_add_items(item: Item):
 @app.get("/items", response_model=list[ItemResponse])
 async def handle_all_items(
 	skip: Annotated[int, Query(ge=0)] = 0,
-	limit: Annotated[int, Query(ge=1, le=100)] = 10
+	limit: Annotated[int, Query(ge=1)] = 10
 ):
 	return items[skip : skip + limit]
 
 @app.get("/items/{id}", response_model=ItemResponse)
-async def handle_one_items(
-	id: Annotated[int, Path(ge=1)]
-):
-	item = next((i for i in items if i["id"] == id), None)
+async def handle_one_items(id: Annotated[int, Path(ge=1)]):
+	item = next(i for i in items if i["id"] == id)
+	if not item:
+		pass # 404を呼ぶ(次のexで学習)
 	return item
