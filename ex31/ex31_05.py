@@ -2,7 +2,7 @@
 	02-23: ex31_05の実装から
 
 """
-from fastapi import FastAPI, Query, Path
+from fastapi import FastAPI, Query, Path, HTTPException
 from typing import Annotated
 from pydantic import BaseModel, Field
 
@@ -48,7 +48,7 @@ async def handle_all_items(
 
 @app.get("/items/{id}", response_model=ItemResponse)
 async def handle_one_items(id: Annotated[int, Path(ge=1)]):
-	item = next(i for i in items if i["id"] == id)
+	item = next((i for i in items if i["id"] == id), None)
 	if not item:
-		pass # 404を呼ぶ(次のexで学習)
+		raise HTTPException(status_code=404, detail="Item not found")
 	return item

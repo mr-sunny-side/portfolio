@@ -92,3 +92,29 @@ def	test_error_add():
 	)
 
 	assert response.status_code == 422
+
+def	test_404_items():
+	client.post(
+		"/items",
+		json={"name": "apple", "price": 300}
+	)
+
+	client.post(
+		"/items",
+		json={"name": "banana", "price":150}
+	)
+
+	client.post(
+		"/items",
+		json={"name": "orange", "price": 500}
+	)
+
+	response = client.get("/items")
+	assert response.json() == [
+		{"id": 1, "name": "apple", "price": 300, "tax": 0},
+		{"id": 2, "name": "banana", "price": 150, "tax": 0},
+		{"id": 3, "name": "orange", "price": 500, "tax": 0}
+	]
+
+	response = client.get("/items/4")
+	assert response.status_code == 404
