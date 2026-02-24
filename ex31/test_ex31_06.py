@@ -1,17 +1,17 @@
 from starlette.testclient import TestClient
-import ex31_05
+import ex31_06
 import pytest
 
-client = TestClient(ex31_05.app)
+client = TestClient(ex31_06.app)
 
 @pytest.fixture(autouse=True)
 def	reset_state():
-	ex31_05.items.clear()
-	ex31_05.item_id = 1
+	ex31_06.items.clear()
+	ex31_06.item_id = 1
 	yield
 
-	ex31_05.items.clear()
-	ex31_05.item_id = 1
+	ex31_06.items.clear()
+	ex31_06.item_id = 1
 
 def	test_index():
 	response = client.get("/")
