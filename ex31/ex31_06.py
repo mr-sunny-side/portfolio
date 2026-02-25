@@ -5,8 +5,9 @@
 
 from fastapi import FastAPI, Query, Path, Depends, HTTPException
 from typing import Annotated
-from pydantic import BaseModel, Field
-from sqlmodel import SQLModel, create_engine, Session, select
+from pydantic import BaseModel
+from sqlmodel import SQLModel, create_engine, Session, select, Field
+# sqlmodelで使うfieldはsqlmodelからインポートする
 
 app = FastAPI()
 

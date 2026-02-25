@@ -1,3 +1,8 @@
+"""
+	02-25: 内部のリストを利用する前提を修正
+
+"""
+
 from starlette.testclient import TestClient
 import ex31_06
 import pytest
