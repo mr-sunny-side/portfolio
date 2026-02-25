@@ -11,10 +11,12 @@ from sqlmodel import SQLModel, create_engine, Session, select, Field
 
 app = FastAPI()
 
-# dbのファイル名を指定
+# dbのファイル名を指定(テスト用に)
 # エンジン(dbを開くオブジェクト)の作成
+# テーブルの作成
 db_url = "sqlite:///ex31_06.db"
 engine = create_engine(db_url, connect_args={"check_same_thread": False})
+SQLModel.metadata.create_all(engine)
 
 # 基礎となるデータベースの型
 class ItemBase(SQLModel):
