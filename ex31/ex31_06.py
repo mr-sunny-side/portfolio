@@ -15,7 +15,6 @@ app = FastAPI()
 # テーブルの作成
 db_url = "sqlite:///ex31_06.db"
 engine = create_engine(db_url, connect_args={"check_same_thread": False})
-SQLModel.metadata.create_all(engine)
 
 # 基礎となるデータベースの型
 class ItemBase(SQLModel):
@@ -34,6 +33,8 @@ class ItemGet(ItemBase):
 # クライアントへのレスポンス用
 class ItemResponse(ItemBase):
 	id: int
+
+SQLModel.metadata.create_all(engine)	# テーブルを定義した後にテーブルを作成する
 
 # セッションを作成し、closeまで担当する関数
 async def get_session():
