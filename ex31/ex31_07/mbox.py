@@ -13,7 +13,6 @@ from email.utils import parsedate_to_datetime
 
 """
 
-domain_dict = {}
 mail_data = '/home/kimetenai/portfolio/_mbox/google.mbox'
 
 def	set_log():
@@ -115,6 +114,8 @@ def	create_json(result: dict) -> dict:
 def	mbox_main(mail_data):
 	set_log()
 	mbox = mailbox.mbox(mail_data)
+	domain_dict = {}
+	# モジュールとして使う際にメモリが蓄積するので、スコープ内で辞書を定義
 
 	for mail in mbox:
 		# domainをパース
