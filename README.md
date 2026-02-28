@@ -95,59 +95,52 @@ python3 ex29_09.py
 
 ---
 
-## ex30_07: Flask REST API + mboxメール解析
+## ex31_07: FastAPI + mboxメール解析
 
-FlaskとSQLAlchemyを用いたREST APIの実装と、mboxファイルのメール解析機能を統合したアプリケーションです。
+FastAPIを用いたmboxファイルのアップロード・解析APIサーバーです。
 
 ### 主な機能
 
-- **アイテムCRUD**: SQLiteを使ったアイテムの作成・取得・更新・削除
 - **mbox解析**: アップロードされたmboxファイルを解析し、以下の統計情報をJSON形式で返す
   - 受信回数が多いドメイン Top3
   - 受信回数が多い件名 Top3
   - 受信期間が最も長いドメイン Top3
+- **一時ファイル管理**: アップロードファイルを一時ファイルに保存し、レスポンス後にバックグラウンドで削除
 
 ### 技術スタック
 
 - Python 3.x
-- Flask
-- Flask-SQLAlchemy（SQLite）
-- werkzeug（ファイルアップロード）
+- FastAPI
+- Pydantic（レスポンスモデル）
 - mailbox / email（標準ライブラリ）
 
 ### ファイル構成
 
 ```
-ex30_07/
-├── ex30_07.py      # メインアプリケーション（Flaskルーティング）
-├── mbox.py         # mboxファイルの解析処理
-└── uploads/        # アップロードファイルの一時保存先
+ex31/ex31_07/
+├── ex31_07.py      # FastAPI アプリケーション
+└── mbox.py         # mboxファイルの解析処理
 ```
 
 ### 使い方
 
 ```bash
-cd ex30_07
-python3 ex30_07.py
+cd ex31/ex31_07
+uvicorn ex31_07:app --reload
 
 # ブラウザでアクセス
-# http://127.0.0.1:8080
+# http://127.0.0.1:8000
 ```
 
 ### 実装されているエンドポイント
 
 - `GET /` - インデックス
-- `GET /echo/<text>` - エコー
-- `POST /items` - アイテム追加
-- `GET /items` - アイテム一覧取得
-- `DELETE /items/<id>` - アイテム削除
-- `PUT /items/<id>` - アイテム更新
-- `POST /analyze/mbox` - mboxファイルのアップロードと解析
+- `POST /mbox` - mboxファイルのアップロードと解析
 
 ### 学んだこと
 
-- FlaskによるREST API設計
-- SQLAlchemyを使ったORMとデータベース操作
-- ファイルアップロード処理（werkzeug）
-- Pythonのmailbox・emailモジュールによるメール解析
-- マルチエンコーディングのデコード処理
+- FastAPIによるREST API設計
+- Pydanticを使ったレスポンスモデルのバリデーション
+- `UploadFile` と `BackgroundTasks` によるファイル処理
+- `tempfile` を使った安全な一時ファイル管理
+- Python ファイルバッファのフラッシュタイミング
