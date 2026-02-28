@@ -4,14 +4,14 @@
 
 """
 from typing import Annotated
-from fastapi import FastAPI, Path, Query, Depends
-from sqlmodel import SQLModel, Field, create_engine, Session
+from fastapi import FastAPI, Path, Query, Depends, HTTPException
+from sqlmodel import SQLModel, Field, create_engine, Session, select
 
 app = FastAPI()
 
 # dbのファイル名
 # 複数スレッドでの仕様を許可し、engine(dbの窓口)を作成
-db_url = "sqlite:///ex31_06a.py"
+db_url = "sqlite:///ex31_06a.db"
 engine = create_engine(db_url, connect_args={"check_same_thread": False})
 
 class ItemBase(SQLModel):
@@ -41,3 +41,30 @@ async def handle_index():
 @app.get("/echo/{text}")
 async def handle_echo(text: str):
 	return {"echo": text}
+
+@app.post("/items", response_model=ItemResponse, status_code=201)
+async def handle_add_items(
+	item: ItemAdd,
+	session: Annotated[Session, Depends(get_session)]
+):
+	item = ItemDB.model_validate(item)	# itemDBに変換
+	session.add(item)
+	session.commit()
+	session.refresh(item)
+	return item
+
+@app.get("/items", response_model=list[ItemResponse])
+async def handle_all_items(
+	session: Annotated[Session, Depends(get_session)]
+):
+	return session.exec(select(ItemDB)).all()	# dbから全カラムを取り出し、全件pythonリストに変換
+
+@app.get("/items/{id}", response_model=ItemResponse)
+async def handle_one_items(
+	id: Annotated[int, Path(ge=1)],
+	session: Annotated[Session, Depends(get_session)]
+):
+	item = session.get(ItemDB, id)
+	if not item:
+		raise HTTPException(status_code=404, detail="Item not found")
+	return item
