@@ -270,6 +270,67 @@ async def handle_delete_item(
 
 ---
 
+## Q: `model_validate` で更新してはダメか？
+
+### 結論：エラーになる
+
+POST では `model_validate` を使っています。PUT でも同じように書けそうに見えますが、**セッションの衝突エラー**が発生します。
+
+### なぜ POST は OK で PUT はダメか
+
+| 操作 | `session.get()` を呼ぶか | セッション状態 |
+|------|--------------------------|----------------|
+| POST | 呼ばない                 | 空（追跡中のオブジェクトなし） |
+| PUT  | 呼ぶ（存在確認のため）   | id=3 を**追跡中** |
+
+PUT では `session.get()` の時点でセッションが対象オブジェクトを追跡し始めます。
+その後 `model_validate` で **新しいオブジェクト** を作って同じ id を付けると衝突します。
+
+```python
+item = session.get(ItemDB, 3)        # セッションが id=3 を追跡開始
+
+new_item = ItemDB.model_validate(item_data)
+new_item.id = 3
+
+session.add(new_item)                # ❌ id=3 は既に追跡中 → 衝突
+# InvalidRequestError: Can't attach instance...
+#   another instance with key (ItemDB, (3,)) is already present in this session
+```
+
+### `sqlmodel_update` が正解な理由
+
+`sqlmodel_update` は新しいオブジェクトを作らず、**追跡中のオブジェクトのフィールドを直接書き換える**ため衝突しません。
+
+```
+session.get()        →  id=3 のオブジェクトを「追跡中」にする
+                                ↓
+item.sqlmodel_update()  →  追跡中オブジェクトのフィールドを直接書き換える
+                           （新しいオブジェクトは作らない）
+                                ↓
+session.commit()     →  変更を検知して UPDATE 文を発行
+```
+
+### 強引に `model_validate` を使う方法（参考・非推奨）
+
+`session.merge()` を使えば衝突は回避できますが、コードが複雑になります。
+
+```python
+item = session.get(ItemDB, id)
+if not item:
+    raise HTTPException(status_code=404, detail="Item not found")
+
+new_item = ItemDB.model_validate(item_data)
+new_item.id = id
+merged = session.merge(new_item)  # ← 既存セッションと統合してくれる
+session.commit()
+session.refresh(merged)
+return merged
+```
+
+`sqlmodel_update` の方がシンプルで SQLModel の想定パターンのため、こちらを使うのが正解。
+
+---
+
 ## GET との比較（パターンの共通点）
 
 PUT と DELETE は GET `/items/{id}` と同じ **「IDで1件取得 → 処理 → コミット」** のパターンです。
