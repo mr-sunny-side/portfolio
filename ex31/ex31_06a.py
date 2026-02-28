@@ -68,3 +68,33 @@ async def handle_one_items(
 	if not item:
 		raise HTTPException(status_code=404, detail="Item not found")
 	return item
+
+@app.put("/items/{id}", response_model=ItemResponse)
+async def handle_put_items(
+	id: Annotated[int, Path(ge=1)],
+	item_data: ItemAdd,
+	session: Annotated[Session, Depends(get_session)]
+):
+	item = session.get(ItemDB, id)	# 変更するデータを取得
+	if not item:
+		HTTPException(status_code=404, detail="Item not found")
+
+	new_data = item_data.model_dump()	# 辞書に変換して準備
+	item.sqlmodel_update(new_data)		# 当該メソッドで対応するキーを変更
+
+	session.add(item)
+	session.commit()
+	session.refresh(item)
+	return item
+
+@app.delete("/items/{id}", status_code=204)	# deleteは204で対応
+async def handle_delete_items(
+	id: Annotated[int, Path(ge=1)],
+	session: Annotated[Session, Depends(get_session)]
+):
+	item = session.get(ItemDB, id)
+	if not item:
+		HTTPException(status_code=404, detail="Item not found")
+
+	session.delete(item)
+	session.commit()
