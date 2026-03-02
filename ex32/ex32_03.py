@@ -59,3 +59,4 @@ async def handle_users(
 	token: Annotated[str, Depends(oauth2)]
 ):
 	# トークン受け取り後から
+	pass
