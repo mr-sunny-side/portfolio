@@ -1,4 +1,9 @@
 
+"""
+	03-02: トークン受け取り後の記述から
+
+"""
+
 from fastapi import FastAPI, HTTPException, Depends
 from typing import Annotated
 from pydantic import BaseModel
@@ -17,6 +22,8 @@ fake_users_db = {
     },
 }
 
+oauth2 = OAuth2PasswordBearer(tokenUrl="token")
+
 # 開示用クラス(パスワードなし)
 class User(BaseModel):
 	username: str
@@ -31,11 +38,12 @@ class UserInDB(User):
 def fake_hashed_pass(request_pass: str):
 	return "fakehashed" + request_pass
 
-def main(
+@app.get("/token")
+async def handle_token(
 	form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
 	# ユーザーがdbに存在するか確認
-	user_dict = fake_users_db.get(form_data.username)
+	user_dict = fake_users_db.get(form_data.username)	# 対応するユーザー情報を取得
 	if not user_dict:
 		raise HTTPException(status_code=400, detail="User not found")
 	user = UserInDB(**user_dict)
@@ -44,3 +52,10 @@ def main(
 	request_pass = fake_hashed_pass(form_data.password)	# ハッシュ？をつける模擬関数
 	if request_pass != user.hashed_password:
 		raise HTTPException(status_code=400, detail="Password is incorrect")
+	return {"access_token": user.username, "token_type": "bearer"}
+
+@app.get("/users/me")
+async def handle_users(
+	token: Annotated[str, Depends(oauth2)]
+):
+	# トークン受け取り後から
