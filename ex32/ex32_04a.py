@@ -20,6 +20,7 @@ ALGORITHM = "HS256"
 KEY = "0416ae60c51e518c43ce4ce1704153a259d47dee19bbf9564bf0e2c9c3ac87e3"
 
 app = FastAPI()
+oauth2 = OAuth2PasswordBearer
 
 fake_users_db = {
 	"johndoe": {
@@ -96,6 +97,8 @@ def create_token(username: dict, expires_delta: timedelta | None = None):
 	encoded = jwt.encode(response, KEY, algorithm=ALGORITHM)# トークンをkeyを使ってalgorithmの形式にエンコード
 	return encoded
 
+
+
 @app.post("/token")
 async def handle_token(
 	form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
@@ -125,3 +128,6 @@ async def handle_token(
 		token_expires
 	)
 	return Token(access_token=token, token_type="bearer")
+
+@app.get("/users/me")
+async def handle_users():
