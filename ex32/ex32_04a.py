@@ -5,6 +5,7 @@
 """
 
 import jwt
+from jwt.exceptions import InvalidTokenError
 from typing import Annotated
 from pydantic import BaseModel
 from pwdlib import PasswordHash
@@ -36,6 +37,9 @@ fake_users_db = {
 class Token(BaseModel):
 	access_token: str
 	token_type: str
+
+class TokenData(BaseModel):
+	username: str | None = None
 
 # クライアントレスポンス用のユーザー情報クラス
 class User(BaseModel):
@@ -97,7 +101,9 @@ def create_token(username: dict, expires_delta: timedelta | None = None):
 	encoded = jwt.encode(response, KEY, algorithm=ALGORITHM)# トークンをkeyを使ってalgorithmの形式にエンコード
 	return encoded
 
-def get_cur_user():
+async def get_cur_user(
+	token: Annotated[str, Depends(oauth2)]
+):
 	"""
 	# JWTトークンをデコードして認証を確認する関数
 
@@ -108,6 +114,33 @@ def get_cur_user():
 	5. インスタンスをreturn
 
 	"""
+	# 認証失敗時のエラーレスポンス
+	error_detail = HTTPException(
+		status_code=401,
+		detail="Authentication failed",
+		headers={"WWW-Authenticate": "Bearer"}
+	)
+
+	try:
+		# JWTトークンをデコード
+		payload = jwt.decode(token, KEY, algorithms=[ALGORITHM])
+		username = payload.get("sub")	# デコードしたトークンからusername取り出し
+		if username is None:			# ユーザー名が入ってない可能性もある
+			raise error_detail
+		token_data = TokenData(username=username)	# 将来payloadの内容が増えるかも、なのでここで一旦インスタンス化
+	except InvalidTokenError:
+		raise error_detail
+
+	# ユーザーが存在するかの確認
+	if token_data.username not in fake_users_db:
+		raise error_detail
+
+	# UserInDBに変換
+	username = token_data.username
+	user = UserInDB(**fake_users_db[username])
+	return user
+
+
 
 @app.post("/token")
 async def handle_token(
@@ -140,5 +173,7 @@ async def handle_token(
 	return Token(access_token=token, token_type="bearer")
 
 @app.get("/users/me")
-async def handle_users():
-	pass
+async def handle_users(
+	cur_user: Annotated[User, Depends(get_cur_user)]	#
+) -> User:	# 関数の戻り値とレスポンスが一致しているので、response_modelはいらない
+	return cur_user
