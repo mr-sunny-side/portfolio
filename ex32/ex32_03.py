@@ -22,6 +22,7 @@ fake_users_db = {
     },
 }
 
+app = FastAPI()
 oauth2 = OAuth2PasswordBearer(tokenUrl="token")
 
 # 開示用クラス(パスワードなし)
@@ -38,7 +39,7 @@ class UserInDB(User):
 def fake_hashed_pass(request_pass: str):
 	return "fakehashed" + request_pass
 
-@app.get("/token")
+@app.post("/token")
 async def handle_token(
 	form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
@@ -52,11 +53,26 @@ async def handle_token(
 	request_pass = fake_hashed_pass(form_data.password)	# ハッシュ？をつける模擬関数
 	if request_pass != user.hashed_password:
 		raise HTTPException(status_code=400, detail="Password is incorrect")
+
+	# ユーザーがバンされていないか確認
+	if user.disabled:
+		raise HTTPException(status_code=400, detail="Inactive user")
+
+
 	return {"access_token": user.username, "token_type": "bearer"}
+
+def fake_decode_token(token):
+	return User(username=token + "decoded")
+
+def get_current_users(
+	token: Annotated[str, Depends(oauth2)]
+):
+	user = fake_decode_token(token)
+	return user
 
 @app.get("/users/me")
 async def handle_users(
-	token: Annotated[str, Depends(oauth2)]
+	cur_user: Annotated[User, Depends(get_current_users)]
 ):
 	# トークン受け取り後から
-	pass
+	return cur_user
