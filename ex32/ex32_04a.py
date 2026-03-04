@@ -1,6 +1,6 @@
 
 """
-	03-04: /users/meの記述から
+	03-04: テストから
 
 """
 
@@ -50,7 +50,7 @@ class User(BaseModel):
 
 # DB用のユーザー情報クラス
 class UserInDB(User):
-	hashed_pass: str
+	hashed_password: str	# fakeDBと同じにしないと展開できない
 
 def authenticate_user(
 		fake_db, username: str, password: str
@@ -65,16 +65,18 @@ def authenticate_user(
 	4. UserInDBインスタンスをreturn
 
 	"""
+	pwd_hasher = PasswordHash.recommended()	# ハッシュ関係を内包したインスタンスを作成
+
 	# ユーザーが存在しないなら疑似確認を走らせる
 	if not username in fake_db:
-		PasswordHash.verify(password, DUMMY_HASH)
+		pwd_hasher.verify(password, DUMMY_HASH)
 		return None
 
 	# DB用インスタンスに変換
 	user = UserInDB(**fake_db[username])
 
 	# パスワードがハッシュと一致するか確認
-	if not PasswordHash.verify(password, user.hashed_pass):
+	if not pwd_hasher.verify(password, user.hashed_password):
 		return None
 	return user
 
