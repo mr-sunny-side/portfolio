@@ -33,11 +33,12 @@ fake_users_db = {
 	}
 }
 
-# クライアントに返すトークンモデル
+# クライアントに返すトークンクラス
 class Token(BaseModel):
 	access_token: str
 	token_type: str
 
+# トークンをデコードして格納するクラス
 class TokenData(BaseModel):
 	username: str | None = None
 
