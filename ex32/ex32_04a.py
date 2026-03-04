@@ -20,7 +20,7 @@ ALGORITHM = "HS256"
 KEY = "0416ae60c51e518c43ce4ce1704153a259d47dee19bbf9564bf0e2c9c3ac87e3"
 
 app = FastAPI()
-oauth2 = OAuth2PasswordBearer
+oauth2 = OAuth2PasswordBearer(tokenUrl="token")
 
 fake_users_db = {
 	"johndoe": {
@@ -97,7 +97,17 @@ def create_token(username: dict, expires_delta: timedelta | None = None):
 	encoded = jwt.encode(response, KEY, algorithm=ALGORITHM)# トークンをkeyを使ってalgorithmの形式にエンコード
 	return encoded
 
+def get_cur_user():
+	"""
+	# JWTトークンをデコードして認証を確認する関数
 
+	1. トークンのデコード
+	2. デコードしたトークンからusernameを取得
+	3. TokenDataインスタンスとしてユーザー名を取得
+	4. dbに存在するか確認し、UserInDBインスタンスに変換
+	5. インスタンスをreturn
+
+	"""
 
 @app.post("/token")
 async def handle_token(
@@ -131,3 +141,4 @@ async def handle_token(
 
 @app.get("/users/me")
 async def handle_users():
+	pass
