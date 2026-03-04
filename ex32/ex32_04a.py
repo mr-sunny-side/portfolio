@@ -114,7 +114,7 @@ async def handle_token(
 	if not user:
 		raise HTTPException(
 			status_code=401,
-			detail="Incorrect username or password"
+			detail="Incorrect username or password",
 			headers={"WWW-Authenticate": "Bearer"}	# クライアントに認証方法を伝える
 		)
 
@@ -124,5 +124,4 @@ async def handle_token(
 		{"sub": user.username},
 		token_expires
 	)
-
 	return Token(access_token=token, token_type="bearer")
