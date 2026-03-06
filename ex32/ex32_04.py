@@ -3,11 +3,15 @@
 
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from typing import Annotated
+from fastapi.security import OAuth2PasswordRequestForm
 
 app = FastAPI()
 
-def authenticate_user():
+def authenticate_user(
+	fake_db, username: str, password: str
+):
 	"""
 	# パスとユーザーが正しい確認する関数
 
@@ -18,7 +22,6 @@ def authenticate_user():
 	4. UserInDBインスタンスをreturn
 
 	"""
-
 	pass
 
 def create_token():
@@ -48,7 +51,9 @@ async def get_cur_user():
 	pass
 
 @app.post("/token")
-async def handle_token():
+async def handle_token(
+	form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+):
 	"""
 	1. authenticate_userで、ユーザーの存在・ハッシュの一致を確認
 		- 存在しないなら401
@@ -57,4 +62,3 @@ async def handle_token():
 	3. Tokenインスタンスをレスポンス
 
 	"""
-	pass

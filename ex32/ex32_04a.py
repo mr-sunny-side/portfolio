@@ -1,6 +1,6 @@
 
 """
-	03-04: テストから
+	03-04:
 
 """
 
@@ -177,6 +177,6 @@ async def handle_token(
 
 @app.get("/users/me")
 async def handle_users(
-	cur_user: Annotated[User, Depends(get_cur_user)]	#
+	cur_user: Annotated[User, Depends(get_cur_user)]
 ) -> User:	# 関数の戻り値とレスポンスが一致しているので、response_modelはいらない
 	return cur_user
