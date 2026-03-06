@@ -60,7 +60,7 @@ def authenticate_user(
 	user = UserInDB(**fake_db[username])
 
 	# ハッシュが一致するか確認
-	if not pwd_hasher.verify(password, user.hashed_password)
+	if not pwd_hasher.verify(password, user.hashed_password):
 		return None
 	return user
 
