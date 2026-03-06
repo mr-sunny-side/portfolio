@@ -98,6 +98,7 @@ async def handle_token(
 ):
 	"""
 	1. authenticate_userで、ユーザーの存在・ハッシュの一致を確認
+		- ユーザーデータを取得
 		- 存在しないなら401
 	2. create_tokenでJWTトークンを作成
 		- timedeltaで有効期限を設定
