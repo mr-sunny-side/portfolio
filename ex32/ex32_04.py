@@ -3,11 +3,13 @@
 			create_tokenの記述から
 
 """
-from datetime import datetime, timedelta
+import jwt
+from jwt.exceptions import InvalidTokenError
+from datetime import datetime, timedelta, timezone
 from pwdlib import PasswordHash
 from fastapi import FastAPI, Depends, HTTPException
 from typing import Annotated
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from pydantic import BaseModel
 
 fake_users_db = {
@@ -22,8 +24,11 @@ fake_users_db = {
 
 DUMMY_HASH = "dummyhash"
 TOKEN_EXPIRE = 30
+KEY = "3a81e68db8edc24614d0d98d51bf84db1735dbc5496d1fee466a6040e43d121b"
+ALGORITHM = "HS256"
 
 app = FastAPI()
+oauth2 = OAuth2PasswordBearer(tokenUrl="token")
 
 # クライアントへレスポンス用のモデル
 class User(BaseModel):
@@ -34,6 +39,14 @@ class User(BaseModel):
 
 class UserInDB(User):
 	hashed_password: str
+
+# クライアントに返すトークンモデル
+class Token(BaseModel):
+	access_token: str
+	token_type: str
+
+class TokenData(BaseModel):
+	username: str | None = None
 
 def authenticate_user(
 	fake_db, username: str, password: str
@@ -66,7 +79,9 @@ def authenticate_user(
 
 
 
-def create_token():
+def create_token(
+	username: dict, expires_delta : timedelta | None = None
+):
 	"""
 	# JWTトークンを作成する関数
 
@@ -75,10 +90,27 @@ def create_token():
 	3. トークンを反映し、作成
 
 	"""
-	pass
+	# 作業、レスポンス用にユーザーネームをコピー
+	response = username.copy()
+
+	# 有効期限が設定されていたら、deltaを作成
+	if expires_delta:
+		expire = datetime.now(timezone.utc) + expires_delta
+	else:
+		expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+
+	# トークンの作成
+	response.update({"exp": expire})
+	encoded = jwt.encode(response, KEY, algorithm=ALGORITHM)
+	return encoded
 
 
-async def get_cur_user():
+
+
+
+async def get_cur_user(
+	token: Annotated[str, Depends(oauth2)]
+):
 	"""
 	# JWTトークンをデコードして認証を確認する関数
 
@@ -89,8 +121,28 @@ async def get_cur_user():
 	5. インスタンスをreturn
 
 	"""
+	# 承認失敗時のエラーレスポンス
+	error_detail = HTTPException(
+		status_code=401,
+		detail="Authentication failed",
+		headers={"WWW-Authenticate": "Bearer"}
+	)
 
-	pass
+	try:
+		#JWTトークンをデコード
+		payload = jwt.decode(token, KEY, algorithms=[ALGORITHM])
+		username = payload.get("sub")
+		if not username:
+			raise error_detail
+		token_data = TokenData(username=username)
+	except InvalidTokenError:
+		raise error_detail
+
+	if token_data.username not in fake_users_db:
+		raise error_detail
+
+	user = UserInDB(**fake_users_db[token_data.username])
+	return user
 
 @app.post("/token")
 async def handle_token(
@@ -116,3 +168,18 @@ async def handle_token(
 
 	# トークンを作成
 	token_expires = timedelta(minutes=TOKEN_EXPIRE)	# 有効期限を作成
+	encoded_token = create_token(
+		username={"sub": user.username},
+		expires_delta=token_expires
+	)
+
+	return Token(
+		access_token=encoded_token,
+		token_type="bearer"
+	)
+
+@app.get("/users/me")
+async def handle_users(
+	cur_user: Annotated[User, Depends(get_cur_user)]
+) -> User:
+	return cur_user
