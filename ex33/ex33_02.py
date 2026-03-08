@@ -1,8 +1,6 @@
 
 """
-	03-07:	Itemクラスの修正から
-			- ex33_03「前回からの引き継ぎ」を参照
-
+	03-07:
 """
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
