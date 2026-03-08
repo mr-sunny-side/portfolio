@@ -14,6 +14,7 @@ from typing import Annotated
 from pydantic import BaseModel
 from pwdlib import PasswordHash
 from datetime import datetime, timedelta, timezone
+from sqlmodel import SQLModel, Field, create_engine, Session, select
 
 app = FastAPI()
 load_dotenv()	# .envから環境変数を展開
@@ -56,6 +57,20 @@ class User(BaseModel):
 # ハッシュも含めたユーザー情報格納クラス
 class UserInDB(User):
 	hashed_password: str
+
+class Item(BaseModel):
+	name: str = Field(min_length=1)	# 索引を作成することで、検索が早くなる
+	price: int = Field(ge=0)
+
+
+# db: itemテーブルを定義
+class ItemDB(SQLModel, table=True):
+	id: int | None = Field(default=None, primary_key=True)
+
+## db: データベースとの架け橋であるエンジンを作成
+sql_url = "postgresql://ex33:secret@localhost/ex33_db"
+connect_args = {"check_same_thread": False}	# 複数スレッドでの操作を許可
+engine = create_engine(sql_url, connect_args=connect_args)
 
 def auth_user(
 	fake_db, username: str, password: str
@@ -118,6 +133,19 @@ def get_cur_user(
 	user = UserInDB(**fake_users_db[token_data.username])
 	return user
 
+# session: セッションの開始・終了を管理する関数
+def create_session():
+	with session(engine) as session:
+		yield session
+
+### db: テーブルをエンジンでスタートアップ
+def create_db():
+	SQLModel.metadata.create_all(engine)
+
+@app.on_event("startup")
+def startup():
+	create_engine()
+
 @app.post("/token")
 async def handle_token(
 	form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
@@ -149,3 +177,20 @@ async def handle_users(
 	cur_user: Annotated[User, Depends(get_cur_user)]
 ) -> User:
 	return cur_user
+
+@app.post("/items")
+async def handle_add_items(
+	item: Item,
+	session: Annotated[Session, Depends(create_session)]
+) -> ItemDB:
+	session.add(item)
+	session.commit()
+	session.refresh(item)
+	return item
+
+@app.get("/items")
+async def handle_all_items(
+	session: Annotated[Session, Depends(create_session)]
+):
+	items = session.exec(select(ItemDB)).all()
+	return items
