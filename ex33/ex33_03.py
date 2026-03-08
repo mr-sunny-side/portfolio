@@ -123,7 +123,6 @@ def	get_cur_user(
 	user = UserInDB(**fake_users_db[token_data.username])
 	return user
 
-
 @app.post("/token")
 async def handle_token(
 	form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
@@ -155,7 +154,6 @@ async def handle_token(
 
 	return Token(
 		access_token=token,
-
 		token_type="Bearer"
 	)
 
