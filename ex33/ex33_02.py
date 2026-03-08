@@ -1,6 +1,7 @@
 
 """
 	03-07:	Itemクラスの修正から
+			- ex33_03「前回からの引き継ぎ」を参照
 
 """
 from fastapi import FastAPI, Depends, HTTPException
