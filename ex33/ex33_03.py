@@ -1,5 +1,6 @@
 """
-	03-08:	テストから
+	03-08:	レビューを見て修正から
+			- notionの実装例も変更
 
 """
 from fastapi import FastAPI, Depends, HTTPException, Path
@@ -198,7 +199,7 @@ async def handle_me(
 async def handle_add_items(
 	item: Item,
 	session: Annotated[Session, Depends(get_session)]
-):
+) -> ItemResponse:
 	# DB用のprimary_keyがあるデータに変換
 	db_item = ItemInDB.model_validate(item)
 	session.add(db_item)
