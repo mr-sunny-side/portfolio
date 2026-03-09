@@ -1,10 +1,8 @@
 """
-	03-08:	認証の実装
-			- テストから
-			itemエンドポイントの実装(items/idも)とデータベースの連携
+	03-08:	テストから
 
 """
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Path
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from typing import Annotated
 from pydantic import BaseModel
@@ -14,11 +12,15 @@ from dotenv import load_dotenv
 import os
 import jwt
 from jwt.exceptions import InvalidTokenError
+from sqlmodel import SQLModel, create_engine, Field, Session, select
 
 
 load_dotenv()
 app = FastAPI()
 oauth2 = OAuth2PasswordBearer(tokenUrl="token")
+
+# postgreSQLのエンジン(dbとの架け橋)を作成
+engine = create_engine("postgresql://ex33:secret@localhost/ex33_db")
 
 DUMMY_HASH = "dummyhash"
 TOKEN_EXPIRE = 30
@@ -55,6 +57,23 @@ class User(BaseModel):
 # DBで管理するハッシュありユーザー情報型
 class UserInDB(User):
 	hashed_password: str
+
+# クライアントからの受取用、Item型
+class Item(BaseModel):
+	name: str
+	price: int = Field(ge=0)
+
+# DB管理用のItem型
+class ItemInDB(SQLModel, table=True):
+	id: int | None = Field(default=None, primary_key=True)
+	name: str = Field(index=True)
+	price: int
+
+# レスポンス用のItem型
+class ItemResponse(BaseModel):
+	id: int
+	name: str
+	price: int
 
 def auth_user(
 	fake_db, username: str, password: str
@@ -123,6 +142,18 @@ def	get_cur_user(
 	user = UserInDB(**fake_users_db[token_data.username])
 	return user
 
+def create_db():
+	SQLModel.metadata.create_all(engine)
+
+def get_session():
+	with Session(engine) as session:
+		yield session
+
+# db関係のスタートアップの記述
+@app.on_event("startup")
+def start_db():
+	create_db()
+
 @app.post("/token")
 async def handle_token(
 	form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
@@ -162,3 +193,38 @@ async def handle_me(
 	cur_user: Annotated[User, Depends(get_cur_user)]
 ) -> User:
 	return cur_user
+
+@app.post("/items")
+async def handle_add_items(
+	item: Item,
+	session: Annotated[Session, Depends(get_session)]
+):
+	# DB用のprimary_keyがあるデータに変換
+	db_item = ItemInDB.model_validate(item)
+	session.add(db_item)
+	session.commit()
+	session.refresh(db_item)
+	return db_item
+
+@app.get("/items")
+async def handle_all_items(
+	session: Annotated[Session, Depends(get_session)]
+) -> list[ItemResponse]:
+	# select * from ItemInDBで取得したデータをすべて出力
+	items = session.exec(select(ItemInDB)).all()
+	return items
+
+@app.get("/items/{id}")
+async def handle_one_items(
+	id: Annotated[int, Path(ge=1)],
+	session: Annotated[Session, Depends(get_session)]
+) -> ItemResponse:
+	# 指定のIDのItemを取得
+	item = session.get(ItemInDB, id)
+	if not item:
+		raise HTTPException(
+			status_code=404,
+			detail="Item not found"
+		)
+
+	return item
