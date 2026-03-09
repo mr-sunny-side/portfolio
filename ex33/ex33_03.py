@@ -14,10 +14,16 @@ import os
 import jwt
 from jwt.exceptions import InvalidTokenError
 from sqlmodel import SQLModel, create_engine, Field, Session, select
+from contextlib import asynccontextmanager
 
+# db関係のスタートアップの記述
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+	create_db()
+	yield
 
 load_dotenv()
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)	# データベースの開閉のタイミングを委譲する
 oauth2 = OAuth2PasswordBearer(tokenUrl="token")
 
 # postgreSQLのエンジン(dbとの架け橋)を作成
@@ -133,11 +139,15 @@ def	get_cur_user(
 
 	try:
 		payload = jwt.decode(token, KEY, algorithms=[ALGORITHM])
-		username = payload['sub']
+		username = payload.get("sub")
 		if not username:
 			raise error_detail
 		token_data = TokenData(username=username)
 	except InvalidTokenError:
+		raise error_detail
+
+	# DBからユーザー情報を取得、無ければエラー
+	if token_data.username not in fake_users_db:
 		raise error_detail
 
 	user = UserInDB(**fake_users_db[token_data.username])
@@ -149,11 +159,6 @@ def create_db():
 def get_session():
 	with Session(engine) as session:
 		yield session
-
-# db関係のスタートアップの記述
-@app.on_event("startup")
-def start_db():
-	create_db()
 
 @app.post("/token")
 async def handle_token(
@@ -227,5 +232,4 @@ async def handle_one_items(
 			status_code=404,
 			detail="Item not found"
 		)
-
 	return item
