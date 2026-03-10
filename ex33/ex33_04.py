@@ -1,10 +1,9 @@
 """
-	03-09:	トークンの記述から
-			- /users/meから
+	03-09:	テストから
 
 """
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import FastAPI, Depends, HTTPException, Path, Response
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from typing import Annotated
 from pydantic import BaseModel
 from pwdlib import PasswordHash
@@ -12,6 +11,9 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 import os
 import jwt
+from jwt.exceptions import InvalidTokenError
+from sqlmodel import SQLModel, create_engine, Field, Session, select
+from contextlib import asynccontextmanager
 
 fake_users_db = {
 	"johndoe": {
@@ -22,13 +24,6 @@ fake_users_db = {
 		"disabled": False,
 	}
 }
-
-app = FastAPI()
-load_dotenv()
-
-DUMMY_HASH = "dummyhash"
-KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
 
 class User(BaseModel):
 	username: str
@@ -42,6 +37,49 @@ class UserInDB(User):
 class Token(BaseModel):
 	access_token: str
 	token_type: str
+
+class TokenData(BaseModel):
+	username: str
+
+# クライアントから受け取るItem型
+class Item(BaseModel):
+	name: str
+	price: int = Field(ge=0)
+
+# DBのItem型
+class ItemEx04(SQLModel, table=True):
+	id: int | None = Field(default=None, primary_key=True)
+	name: str = Field(index=True)
+	price: int
+
+class ItemResponse(BaseModel):
+	id: int
+	name: str
+	price: int
+
+# engine(DBの窓口)を作成
+engine = create_engine("postgresql://ex33:secret@localhost/ex33_db")
+
+# テーブルを作成する関数
+def create_db():
+	SQLModel.metadata.create_all(engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):	# asyncである必要がある
+	create_db()						# 終了処理のためにyieldが必要
+	yield
+
+app = FastAPI(lifespan=lifespan)	# 開始・終了のタイミングを委譲する(lifespan)
+load_dotenv()
+oauth2 = OAuth2PasswordBearer(tokenUrl="token")
+
+DUMMY_HASH = "dummyhash"
+KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+
+def get_session():
+	with Session(engine) as session:
+		yield session
 
 def auth_user(
 	fake_db, username: str, password: str
@@ -79,6 +117,33 @@ def create_token(
 	token = jwt.encode(token_sub, key=KEY, algorithm=ALGORITHM)
 	return token
 
+def get_cur_user(
+	token: Annotated[str, Depends(oauth2)]
+) -> UserInDB:
+
+	# トークンの検証、ユーザーの照合エラーの型
+	error_detail = HTTPException(
+		status_code=401,
+		detail="Authentication failed",
+		headers={"WWW-Authenticate": "Bearer"}
+	)
+
+	# トークンをデコードしてusernameを取り出す
+	try:
+		payload = jwt.decode(token, key=KEY, algorithms=[ALGORITHM])
+		username = payload.get("sub")
+		if not username:
+			raise error_detail
+		token_data = TokenData(username=username)
+	except InvalidTokenError:
+		raise error_detail
+
+	# usernameからデータを探す、無ければエラー
+	if token_data.username not in fake_users_db:
+		raise error_detail
+	user = UserInDB(**fake_users_db[token_data.username])
+	return user
+
 @app.post("/token")
 async def handle_token(
 	form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
@@ -109,3 +174,77 @@ async def handle_token(
 		access_token=token,
 		token_type="Bearer"
 	)
+
+@app.get("/users/me")
+async def handle_me(
+	cur_user: Annotated[User, Depends(get_cur_user)]
+) -> User:
+	return cur_user
+
+@app.post("/items")
+async def handle_add_items(
+	item: Item,
+	session: Annotated[Session, Depends(get_session)]
+) -> ItemResponse:
+	db_item = ItemEx04.model_validate(item)
+	session.add(db_item)
+	session.commit()
+	session.refresh(db_item)
+	return db_item
+
+@app.get("/items")
+async def handle_all_items(
+	session: Annotated[Session, Depends(get_session)]
+) -> list[ItemResponse]:
+	items = session.exec(select(ItemEx04)).all()
+	return items
+
+@app.get("/items/{id}")
+async def handle_one_items(
+	id: Annotated[int, Path(ge=1)],
+	session: Annotated[Session, Depends(get_session)]
+) -> ItemResponse:
+	db_item = session.get(ItemEx04, id)
+	if not db_item:
+		raise HTTPException(
+			status_code=404,
+			detail="Item not found"
+		)
+	return db_item
+
+@app.put("/items/{id}")
+async def handle_change_items(
+	id: Annotated[int, Path(ge=1)],
+	item: Item,
+	session: Annotated[Session, Depends(get_session)]
+) -> ItemResponse:
+	db_item = session.get(ItemEx04, id)
+	if not db_item:
+		raise HTTPException(
+			status_code=404,
+			detail="Item not found"
+		)
+
+	db_item.name = item.name
+	db_item.price = item.price
+
+	session.add(db_item)
+	session.commit()
+	session.refresh(db_item)
+	return db_item
+
+@app.delete("/items/{id}")
+async def handle_delete_items(
+	id: Annotated[int, Path(ge=1)],
+	session: Annotated[Session, Depends(get_session)]
+):
+	db_item = session.get(ItemEx04, id)
+	if not db_item:
+		raise HTTPException(
+			status_code=404,
+			detail="Item not found"
+		)
+
+	session.delete(db_item)
+	session.commit()
+	return Response(status_code=204)
