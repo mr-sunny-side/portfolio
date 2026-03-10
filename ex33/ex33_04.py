@@ -1,5 +1,5 @@
 """
-	03-09:	テストから
+	03-09:
 
 """
 from fastapi import FastAPI, Depends, HTTPException, Path, Response
@@ -90,7 +90,7 @@ def auth_user(
 
 	# ユーザーが存在するか確認
 	if username not in fake_db:
-		hasher.verify(password, DUMMY_HASH)	# 疑似検証でタイミング剛撃対策
+		hasher.verify(password, fake_db.get("hashed_password"))	# ハッシュ済みパスでないと500になる可能性
 		return None
 
 	# ユーザー情報を取得、ハッシュを検証
@@ -233,7 +233,7 @@ async def handle_change_items(
 	session.refresh(db_item)
 	return db_item
 
-@app.delete("/items/{id}")
+@app.delete("/items/{id}", status_code=204) # 自動ドキュメントにステータスを明記
 async def handle_delete_items(
 	id: Annotated[int, Path(ge=1)],
 	session: Annotated[Session, Depends(get_session)]
