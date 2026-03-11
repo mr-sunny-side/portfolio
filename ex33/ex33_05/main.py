@@ -1,6 +1,6 @@
 """
 	03-10:	トークン記述 - 完了
-			DB記述
+			DB記述 - get, put, deleteエンドポイント作成から
 			マイグレーション作成(事前解説8.)
 
 """
@@ -13,8 +13,10 @@ import jwt
 from jwt.exceptions import InvalidTokenError
 from dotenv import load_dotenv
 import os
+from contextlib import asynccontextmanager
+from sqlmodel import create_engine, SQLModel, Session
 
-from models import User, UserInDB, Token, TokenData
+from models import User, UserInDB, Token, TokenData, Item, ItemEx05, ItemResponse
 
 fake_users_db = {
 	"johndoe": {
@@ -26,13 +28,30 @@ fake_users_db = {
 	}
 }
 
+# engine(DBの窓口)をpostgresqlで定義
+engine = create_engine("postgresql://ex33:secret@localhost/ex33_db")
+
+# テーブルの作成
+def create_table():
+	SQLModel.metadata.create_all(engine)
+
+# テーブル作成関数をスタートで呼び出し(yieldで起動・終了を管理)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+	create_table()
+	yield
+
 load_dotenv()
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)	# スタートアップの制御をアプリに委譲
 oauth2 = OAuth2PasswordBearer
 
 KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 TOKEN_EXPIRE = 30
+
+def get_session():
+	with Session(engine) as session:
+		yield session
 
 def	auth_user(
 	fake_db, username: str, password: str
@@ -132,3 +151,14 @@ async def handle_me(
 	cur_user: Annotated[User, Depends(get_cur_user)]
 ) -> User:
 	return cur_user
+
+@app.post("/items")
+async def handle_add_items(
+	item: Item,
+	session: Annotated[Session, Depends(get_session)]
+) -> ItemResponse:
+	db_item = ItemEx05.model_validate(item)
+	session.add(db_item)
+	session.commit()
+	session.refresh(db_item)
+	return db_item

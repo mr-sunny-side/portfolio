@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Field
 from pydantic import BaseModel
 
 # トークンリクエスト用のトークン格納型
@@ -20,3 +20,19 @@ class User(BaseModel):
 # ハッシュも含めたユーザーデータ型
 class UserInDB(User):
 	hashed_password: str
+
+# クライアントからの受取用Item型
+class Item(BaseModel):
+	name: str
+	price: int = Field(ge=0)
+
+# DB用Item型
+class ItemEx05(SQLModel, table=True):
+	id: int | None = Field(default=None, primary_key=True)
+	name: str
+	price: int
+
+class ItemResponse(BaseModel):
+	id: int
+	name: str
+	price: int
