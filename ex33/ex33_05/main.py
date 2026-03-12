@@ -1,10 +1,10 @@
 """
 	03-10:	トークン記述 - 完了
-			DB記述 - get, put, deleteエンドポイント作成から
+			DB記述 - 完了
 			マイグレーション作成(事前解説8.)
 
 """
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Path, Response
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from typing import Annotated
 from pwdlib import PasswordHash
@@ -14,7 +14,7 @@ from jwt.exceptions import InvalidTokenError
 from dotenv import load_dotenv
 import os
 from contextlib import asynccontextmanager
-from sqlmodel import create_engine, SQLModel, Session
+from sqlmodel import create_engine, SQLModel, Session, select
 
 from models import User, UserInDB, Token, TokenData, Item, ItemEx05, ItemResponse
 
@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
 
 load_dotenv()
 app = FastAPI(lifespan=lifespan)	# スタートアップの制御をアプリに委譲
-oauth2 = OAuth2PasswordBearer
+oauth2 = OAuth2PasswordBearer(tokenUrl="token")
 
 KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
@@ -97,7 +97,7 @@ def get_cur_user(
 	error_detail = HTTPException(
 		status_code=401,
 		detail="Authentication failed",
-		headers={"Authenticate": "Bearer"}
+		headers={"WWW-Authenticate": "Bearer"}
 	)
 
 	try:
@@ -162,3 +162,60 @@ async def handle_add_items(
 	session.commit()
 	session.refresh(db_item)
 	return db_item
+
+@app.get("/items")
+async def handle_all_items(
+	session: Annotated[Session, Depends(get_session)]
+) -> list[ItemResponse]:
+	items = session.exec(select(ItemEx05)).all()
+	return items
+
+@app.get("/items/{id}")
+async def handle_one_items(
+	id: Annotated[int, Path(ge=1)],
+	session: Annotated[Session, Depends(get_session)]
+) -> ItemResponse:
+	item = session.get(ItemEx05, id)
+	if not item:
+		raise HTTPException(
+			status_code=404,
+			detail="Item not found"
+		)
+	return item
+
+@app.put("/items/{id}")
+async def handle_change_items(
+	id: Annotated[int, Path(ge=1)],
+	item: Item,
+	session: Annotated[Session, Depends(get_session)]
+) -> ItemResponse:
+	db_item = session.get(ItemEx05, id)
+	if not db_item:
+		raise HTTPException(
+			status_code=404,
+			detail="Item not found"
+		)
+
+	db_item.name = item.name
+	db_item.price = item.price
+
+	session.add(db_item)
+	session.commit()
+	session.refresh(db_item)
+	return db_item
+
+@app.delete("/items/{id}", status_code=204)
+async def handle_delete_items(
+	id: Annotated[int, Path(ge=1)],
+	session: Annotated[Session, Depends(get_session)]
+):
+	db_item = session.get(ItemEx05, id)
+	if not db_item:
+		raise HTTPException(
+			status_code=404,
+			detail="Item not found"
+		)
+
+	session.delete(db_item)
+	session.commit()
+	return Response(status_code=204)
