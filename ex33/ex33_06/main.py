@@ -1,49 +1,101 @@
 """
 	03-14:	DBの実装	- 完了
-			トークンの実装
-			alembicの設定変更
+			トークンの実装	- 完了
+			alembicの設定変更	- crete_allの削除から
 
 """
 from fastapi import FastAPI, Depends, Path, HTTPException, Response
-from sqlmodel import SQLModel, create_engine, Session, select
+from sqlmodel import SQLModel, create_engine, Session, select, Field
 from pydantic import BaseModel, Field
-from contextlib import asynccontextmanager
 from typing import Annotated
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from pwdlib import PasswordHash
+from datetime import datetime, timedelta, timezone
+import jwt
+from jwt.exceptions import InvalidTokenError
+from dotenv import load_dotenv
+import os
+
+from model import Item, ItemResponse, ItemEx06, User, UserResponse, UserEx06, \
+	Token, TokenData
 
 # engine(DBの窓口)の作成
 engine = create_engine("postgresql://ex33:secret@localhost/ex33_db")
 
 ## DBの設定
-# テーブルの作成関数
-def create_table():
-	SQLModel.metadata.create_all(engine)
-
-# スタートアップ時の動作設定
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-	create_table()
-	yield
-
 # スタートアップ後の制御を委譲
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
+load_dotenv()
+oauth2 = OAuth2PasswordBearer(tokenUrl="token")
 
-# クライアントからの受取用型
-class Item(BaseModel):
-	name: str
-	price: int = Field(ge=0)
-
-# レスポンス用Item型
-class ItemResponse(Item):
-	id: int
-
-class ItemEx06(SQLModel, table=True):
-	id: int | None = Field(default=None, primary_key=True)
-	name: str
-	price: int
+KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
 
 def get_session():
 	with Session(engine) as session:
 		yield session
+
+def auth_user(
+	username: str,
+	password: str,
+	session: Annotated[Session, Depends(get_session)]
+) -> UserEx06 | None:
+
+	hasher = PasswordHash.recommended()
+
+	# DB検索のコマンド、ユーザーの捜索
+	statement = select(UserEx06).where(UserEx06.username == username)
+	db_user = session.exec(statement).first()
+	if not db_user:
+		return None
+
+	# パスワードの確認
+	if not hasher.verify(password, db_user.hashed_password):
+		return None
+	return db_user
+
+def create_token(
+	user_sub: dict,
+	token_expire: timedelta | None = None
+) -> str:
+	copy_sub = user_sub.copy()
+
+	# 有効期限の設定
+	if token_expire:
+		expire = datetime.now(timezone.utc) + token_expire
+	else:
+		expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+
+	# トークンの作成
+	copy_sub.update({"exp": expire})
+	token = jwt.encode(copy_sub, key=KEY, algorithm=ALGORITHM)
+	return token
+
+def get_cur_user(
+	token: Annotated[str, Depends(oauth2)],
+	session: Annotated[Session, Depends(get_session)]
+) -> UserEx06:
+	error_detail = HTTPException(
+		status_code=401,
+		detail="Authentication failed",
+		headers={"WWW-Authenticate": "Bearer"}
+	)
+
+	try:
+		# トークンをデコード
+		payload = jwt.decode(token, key=KEY, algorithms=[ALGORITHM])
+		username = payload.get("sub")
+		if not username:
+			raise error_detail
+	except InvalidTokenError:
+		raise error_detail
+
+	# 取得したusernameを検索
+	statement = select(UserEx06).where(UserEx06.username == username)
+	db_user = session.exec(statement).first()
+	if not db_user:
+		raise error_detail
+	return db_user
 
 # Item追加
 @app.post("/items")
@@ -115,3 +167,57 @@ async def handle_delete_items(
 	session.delete(db_item)
 	session.commit()
 	return Response(status_code=204)
+
+@app.post("/users/register")
+async def handle_add_users(
+	user: User,
+	session: Annotated[Session, Depends(get_session)]
+) -> UserResponse:
+	# 平文パスワードをハッシュ化
+	hasher = PasswordHash.recommended()
+	user.hashed_password = hasher.hash(user.hashed_password)
+
+	# DBに変換
+	db_user = UserEx06.model_validate(user)
+	session.add(db_user)
+	session.commit()
+	session.refresh(db_user)
+	return db_user
+
+@app.post("/token")
+async def handle_token(
+	form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+	session: Annotated[Session, Depends(get_session)]
+) -> Token:
+
+	# 依存性の自動注入はエンドポイントだけ
+	user = auth_user(
+		form_data.username,
+		form_data.password,
+		session
+	)
+
+	# 認証に失敗なら401
+	if not user:
+		raise HTTPException(
+			status_code=401,
+			detail="Incorrect username or password"
+		)
+
+	# トークンの作成、有効期限の設定
+	token_expire = timedelta(minutes=30)
+	token = create_token(
+		user_sub={"sub": user.username},
+		token_expire=token_expire
+	)
+
+	return Token(
+		access_token=token,
+		token_type="Bearer"
+	)
+
+@app.get("/users/me")
+async def handle_me(
+	user: Annotated[UserResponse, Depends(get_cur_user)]
+) -> UserResponse:
+	return user
