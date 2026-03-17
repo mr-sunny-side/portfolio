@@ -1,5 +1,5 @@
 """
-	03-17: mdを読むところから
+	03-17:	ItemDBのCRUDの実装から
 
 """
 from fastapi import FastAPI, Depends, HTTPException
@@ -113,6 +113,12 @@ async def handle_register(
 	session.commit()
 	session.refresh(db_user)
 	return db_user
+
+@app.get("/users/me/items")
+async def handle_me_items(
+	cur_user: Annotated[UserResponse, Depends(get_cur_user)]
+) -> ItemResponse:
+	return cur_user.items
 
 @app.post("/token")
 async def handle_token(

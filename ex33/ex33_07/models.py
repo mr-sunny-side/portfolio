@@ -20,7 +20,7 @@ class User(BaseModel):
 	email: str | None = None
 
 # レスポンス用Userデータ型
-class UserResponse(User):
+class UserResponse(BaseModel):	# フィルタするために新しく定義
 	id: int
 	username: str
 	email: str | None = None
@@ -31,17 +31,17 @@ class Token(BaseModel):
 	access_token: str
 	token_type: str
 
-class UserEx07(SQLModel):
+class UserEx07(SQLModel, table=True):
 	id: int | None = Field(default=None, primary_key=True)
 	username: str
 	password: str
 	email: str | None = None
 	disabled: bool | None = False
-	items = list[ItemResponse] | None = None
+	items: list["ItemEx07"] = Relationship(back_populates="owner")
 
 class ItemEx07(SQLModel, table=True):
 	id: int | None = Field(default=None, primary_key=True)
 	name: str
 	price: int
-	user_id: int | None = Field(default=None, foreign_key=UserEx07.id)	# UserDBとの紐付け
-	owner: "UserEx07" | None = Relationship(back_populates="Items")		# User型でのItem型の定義
+	user_id: int | None = Field(default=None, foreign_key="userex07.id") # foreign_keyは全部小文字
+	owner: "UserEx07" = Relationship(back_populates="items")		# User型でのItem型の定義
