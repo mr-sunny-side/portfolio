@@ -2,7 +2,7 @@
 	03-17:	ItemDBのCRUDの実装から
 
 """
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Path, Response
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlmodel import create_engine, Session, select
 from typing import Annotated
@@ -117,8 +117,39 @@ async def handle_register(
 @app.get("/users/me/items")
 async def handle_me_items(
 	cur_user: Annotated[UserResponse, Depends(get_cur_user)]
-) -> ItemResponse:
+) -> list[ItemResponse]:
 	return cur_user.items
+
+@app.get("/users")
+async def handle_all_users(
+	session: Annotated[Session, Depends(get_session)]
+) -> list[UserResponse]:
+	db_users = session.exec(select(UserEx07)).all()
+	return db_users
+
+@app.put("/users/me")
+async def handle_change_users(
+	user: User,
+	cur_user: Annotated[UserEx07, Depends(get_cur_user)],
+	session: Annotated[Session, Depends(get_session)]
+) -> UserResponse:
+	cur_user.username = user.username
+	cur_user.password = user.password
+	cur_user.email = user.email
+
+	session.add(cur_user)
+	session.commit()
+	session.refresh(cur_user)
+	return cur_user
+
+@app.delete("/users/me", status_code=204)
+async def handle_delete_users(
+	cur_user: Annotated[UserEx07, Depends(get_cur_user)],
+	session: Annotated[Session, Depends(get_session)]
+):
+	session.delete(cur_user)
+	session.commit()
+	return Response(status_code=204)
 
 @app.post("/token")
 async def handle_token(
@@ -171,3 +202,47 @@ async def handle_add_items(
 	session.commit()
 	session.refresh(db_item)
 	return cur_user
+
+@app.get("/items")
+async def handle_all_items(
+	session: Annotated[Session, Depends(get_session)]
+) -> list[ItemResponse]:
+	db_items = session.exec(select(ItemEx07)).all()
+	return db_items
+
+@app.put("/items/{id}")
+async def handle_change_items(
+	id: Annotated[int, Path(ge=1)],
+	item: Item,
+	session: Annotated[Session, Depends(get_session)]
+) -> ItemResponse:
+	db_item = session.get(ItemEx07, id)
+	if not db_item:
+		raise HTTPException(
+			status_code=404,
+			detail="Item not found"
+		)
+
+	db_item.name = item.name
+	db_item.price = item.price
+
+	session.add(db_item)
+	session.commit()
+	session.refresh(db_item)
+	return db_item
+
+@app.delete("/items/{id}", status_code=204)
+async def handle_delete_items(
+	id: Annotated[int, Path(ge=1)],
+	session: Annotated[Session, Depends(get_session)]
+):
+	db_item = session.get(ItemEx07, id)
+	if not db_item:
+		raise HTTPException(
+			status_code=204,
+			detail="Item not found"
+		)
+
+	session.delete(db_item)
+	session.commit()
+	return Response(status_code=204)
