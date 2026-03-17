@@ -1,5 +1,5 @@
 """
-	03-17: alembicの設定変更、更新から
+	03-17: mdを読むところから
 
 """
 from fastapi import FastAPI, Depends, HTTPException
