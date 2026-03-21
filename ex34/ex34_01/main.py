@@ -7,7 +7,10 @@
 			- user/register, users/me=delete, users/me/items
 			- items=post, items=delete
 			マイグレーションの作成	- 完了
-			dockerイメージの作成
+			dockerイメージの作成	- 完了
+
+			ex34_01の復習から(全部書き直す)
+			アプリの作成
 
 """
 from fastapi import FastAPI, Depends, HTTPException, Response, Path
@@ -21,7 +24,8 @@ from jwt.exceptions import InvalidTokenError
 from dotenv import load_dotenv
 import os
 
-from models import Token, User, Item, UserResponse, ItemResponse, UserEx01, ItemEx01
+from ex34_01.models import Token, User, Item, UserResponse, ItemResponse, UserEx01, ItemEx01
+# appから見て相対的な場所を指定
 
 load_dotenv()
 dummy_hasher = PasswordHash.recommended()
