@@ -1,13 +1,16 @@
 """
-	03-18:	アプリの構築
-			- item認証エンドポイントの作成から
+	03-18:	マイグレーションの作成、テストから
+			- 新しいdbの作成
+			- マイグレーション作成
+
+			アプリの構築 - 完了
 			- user/register, users/me=delete, users/me/items
 			- items=post, items=delete
-			マイグレーションの作成
+			マイグレーションの作成	- 完了
 			dockerイメージの作成
 
 """
-from fastapi import FastAPI, Depends, HTTPException, Response
+from fastapi import FastAPI, Depends, HTTPException, Response, Path
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from typing import Annotated
 from sqlmodel import Session, create_engine, select
@@ -18,7 +21,7 @@ from jwt.exceptions import InvalidTokenError
 from dotenv import load_dotenv
 import os
 
-from models import Token, User, UserResponse, UserEx01, ItemEx01
+from models import Token, User, Item, UserResponse, ItemResponse, UserEx01, ItemEx01
 
 load_dotenv()
 dummy_hasher = PasswordHash.recommended()
@@ -106,6 +109,13 @@ async def handle_users_register(
 	session.refresh(db_user)
 	return db_user
 
+@app.get("/users/me")
+async def handle_all_users(
+	session: Annotated[Session, Depends(get_session)]
+) -> list[UserResponse]:
+	db_users = session.exec(select(UserEx01)).all()
+	return db_users
+
 @app.delete("/users/me", status_code=204)
 async def handle_delete_users(
 	cur_user: Annotated[UserEx01, Depends(get_cur_user)],
@@ -148,6 +158,31 @@ async def handle_token(
 
 @app.post("/items")
 async def handle_add_items(
+	item: Item,
+	cur_user: Annotated[UserEx01, Depends(get_cur_user)],
+	session: Annotated[Session, Depends(get_session)]
+) -> ItemResponse:
+	db_item = ItemEx01.model_validate(item)
+	db_item.user_id = cur_user.id
+	session.add(db_item)
+	session.commit()
+	session.refresh(db_item)
+	return db_item
 
+@app.delete("/items/{id}", status_code=204)
+async def handle_delete_items(
+	id: Annotated[int, Path(ge=1)],
+	cur_users: Annotated[UserEx01, Depends(get_cur_user)],
+	session: Annotated[Session, Depends(get_session)]
 ):
-	pass
+	statement = select(ItemEx01).where(UserEx01.id == id)
+	db_item = session.exec(statement).first()
+	if not db_item:
+		raise HTTPException(
+			status_code=404,
+			detail="Item not found"
+		)
+
+	session.delete(db_item)
+	session.commit()
+	return Response(status_code=204)

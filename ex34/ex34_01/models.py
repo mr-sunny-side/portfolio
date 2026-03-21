@@ -15,6 +15,15 @@ class UserResponse(BaseModel):
 	username: str
 	email: str | None = None
 
+class Item(BaseModel):
+	name: str
+	price: int
+
+class ItemResponse(BaseModel):
+	id: int
+	name: str
+	price: int
+
 class UserEx01(SQLModel, table=True):
 	id: int = Field(default=None, primary_key=True)
 	username: str
