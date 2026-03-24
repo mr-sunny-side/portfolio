@@ -26,12 +26,13 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from jwt.exceptions import InvalidTokenError
 
-from models import Token, User, Item, UserResponse, ItemResponse, UserEx01a, ItemEx01a
+from ex34_01a.models import Token, User, Item, UserResponse, ItemResponse, UserEx01a, ItemEx01a
+# コンテナ内のappからの相対パスで記述
 
 load_dotenv()
 dummy_hash = PasswordHash.recommended()
 app = FastAPI()
-engine = create_engine()	# ex34_02で設定
+engine = create_engine("postgresql://ex33:secret@localhost/ex33_db")	# ex34_02で設定
 oauth2 = OAuth2PasswordBearer(tokenUrl="token")
 
 DUMMY = dummy_hash.hash("dummy")
