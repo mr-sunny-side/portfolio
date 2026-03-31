@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from sqlmodel import SQLModel
-from ex33_07.models import ItemEx07, UserEx07	# metadataとして渡すテーブル(metadataの中身)をimport
+from ex33_A.models import ItemEx01, UserEx01	# metadataとして渡すテーブル(metadataの中身)をimport
 	# ファイル構造		渡すテーブル
 
 # this is the Alembic Config object, which provides

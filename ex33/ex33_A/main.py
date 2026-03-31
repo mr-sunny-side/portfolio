@@ -1,63 +1,56 @@
 """
-	03-22:	アプリの構築
-			- token											 - 完了
-			- user/register, users/me=delete, users/me/items - 完了
-			- items=post, items=delete						 - 完了
-			- engineの記述									 - まずdockerから
-			dockerイメージの作成							 - ymlの作成から
-			マイグレーションの作成
-
-			ex34_01の復習から(全部書き直す)
-			- ex34a/ex34_01aとして復習用ディレクトリに作成
-			- 新DBの作成
-			- dockerの再作成
-			アプリの作成
+	アプリの構築	- マイグレーション作成から
+	- Token		- 完了
+	- user/add	- 完了
+	- users/me=delete	- 完了
+	- users/me			- 完了
+	- items=post, items=delete	- 完了
+	マイグレーションの作成
 
 
 """
-from fastapi import FastAPI, Depends, HTTPException, Response, Path
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from typing import Annotated
+from fastapi import FastAPI, Depends, HTTPException, Response
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlmodel import Session, create_engine, select
+from typing import Annotated
 from pwdlib import PasswordHash
-from dotenv import load_dotenv
-import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone, timedelta
 import jwt
 from jwt.exceptions import InvalidTokenError
+from dotenv import load_dotenv
+import os
 
-from ex34_01a.models import Token, User, Item, UserResponse, ItemResponse, UserEx01a, ItemEx01a
-# コンテナ内のappからの相対パスで記述
+from models import Token, User, Item, UserResponse, ItemResponse, UserEx01, ItemEx01
 
-load_dotenv()
-dummy_hash = PasswordHash.recommended()
 app = FastAPI()
-engine = create_engine("postgresql://ex33:secret@localhost/ex33_db")	# ex34_02で設定
+engine = create_engine("postgresql://ex33:secret@localhost/ex33_db")
 oauth2 = OAuth2PasswordBearer(tokenUrl="token")
+dummy_hasher = PasswordHash.recommended()
+load_dotenv()
 
-DUMMY = dummy_hash.hash("dummy")
-KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
+DUMMY = dummy_hasher.hash("dummy")
+KEY = os.environ("SECRET_KEY")
+ALGORITHM = os.environ("ALGORITHM")
 
 def get_session():
 	with Session(engine) as session:
 		yield session
 
 def auth_users(
-	username: str,
-	password: str,
+	form_data: OAuth2PasswordRequestForm,
 	session: Session
-) -> UserEx01a | None:
+) -> UserEx01 | None:
 	hasher = PasswordHash.recommended()
 
-	# ユーザー名からデータを抽出
-	statement = select(UserEx01a).where(UserEx01a.username == username)
+	# ユーザーデータの取り出し
+	statement = select(UserEx01).where(UserEx01.username == form_data.username)
 	db_user = session.exec(statement).first()
 	if not db_user:
-		hasher.verify(password, DUMMY)	# 疑似検証で攻撃阻止
+		hasher.verify(form_data.password, DUMMY)
 		return None
 
-	if not hasher.verify(password, db_user.password):
+	# パスワードの検証
+	if not hasher.verify(form_data.password, db_user.password):
 		return None
 	return db_user
 
@@ -77,9 +70,9 @@ def create_token(
 	return token
 
 def get_cur_users(
-	token: Annotated[str, Depends(oauth2)],
-	session: Annotated[Session, Depends(get_session)]
-) -> UserEx01a:
+	session: Annotated[Session, Depends(get_session)],
+	token: Annotated[str, Depends(oauth2)]
+) -> UserEx01:
 	error_detail = HTTPException(
 		status_code=401,
 		detail="Authentication failed",
@@ -95,26 +88,23 @@ def get_cur_users(
 	except InvalidTokenError:
 		raise error_detail
 
-	# トークンの情報でデータ取り出し
-	statement = select(UserEx01a).where(UserEx01a.username == username)
+	# ユーザーの検索
+	statement = select(UserEx01).where(UserEx01.username == username)
 	db_user = session.exec(statement).first()
 	if not db_user:
 		raise error_detail
 	return db_user
 
-# トークンの取得
+
+
 @app.post("/token")
-async def handle_all_users(
+async def handle_token(
 	form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 	session: Annotated[Session, Depends(get_session)]
 ) -> Token:
 
-	# ユーザーの検証
-	db_user = auth_users(
-		form_data.username,
-		form_data.password,
-		session
-	)
+	# ユーザーの認証
+	db_user = auth_users(form_data, session)
 	if not db_user:
 		raise HTTPException(
 			status_code=401,
@@ -125,7 +115,7 @@ async def handle_all_users(
 	# トークンの作成
 	token_expire = timedelta(minutes=30)
 	token = create_token(
-		user_sub={"sub": db_user.username},
+		user_sub={"sub": form_data.username},
 		token_expire=token_expire
 	)
 
@@ -134,16 +124,15 @@ async def handle_all_users(
 		token_type="Bearer"
 	)
 
-# ユーザーの追加
-@app.post("/users/register")
+@app.post("/users/add")
 async def handle_add_users(
 	user: User,
 	session: Annotated[Session, Depends(get_session)]
 ) -> UserResponse:
 	hasher = PasswordHash.recommended()
 
-	# db型に整形し、パスワードをハッシュ化
-	db_user = UserEx01a.model_validate(user)
+	# db型への変換、パスワードのハッシュ化
+	db_user = UserEx01.model_validate(user)
 	db_user.password = hasher.hash(db_user.password)
 
 	session.add(db_user)
@@ -151,33 +140,30 @@ async def handle_add_users(
 	session.refresh(db_user)
 	return db_user
 
-
-# 自分のアイテム情報も含めた参照
-@app.get("/users/me/items")
-async def handle_all_users(
-	cur_user: Annotated[UserResponse, Depends(get_cur_users)]
-) -> UserResponse:
-	return cur_user
-
-# ユーザーの削除
 @app.delete("/users/me", status_code=204)
 async def handle_delete_users(
-	cur_user: Annotated[UserEx01a, Depends(get_cur_users)],
+	cur_users: Annotated[UserEx01, Depends(get_cur_users)],
 	session: Annotated[Session, Depends(get_session)]
 ):
-	session.delete(cur_user)
+	session.delete(cur_users)
 	session.commit()
 	return Response(status_code=204)
 
-# アイテムの追加
+@app.get("/users/me")
+async def handle_all_users(
+	session: Annotated[Session, Depends(get_session)]
+) -> list[UserResponse]:
+	db_users = session.exec(select(UserEx01)).all()
+	return db_users
+
 @app.post("/items")
 async def handle_add_items(
 	item: Item,
-	cur_user: Annotated[UserEx01a, Depends(get_cur_users)],
+	cur_user: Annotated[UserEx01, Depends(get_cur_users)],
 	session: Annotated[Session, Depends(get_session)]
 ) -> ItemResponse:
-	# データ型に変換し、user_idを付与
-	db_item = ItemEx01a.model_validate(item)
+	# db型への変換、外部キーの付与
+	db_item = ItemEx01.model_validate(item)
 	db_item.user_id = cur_user.id
 
 	session.add(db_item)
@@ -185,13 +171,12 @@ async def handle_add_items(
 	session.refresh(db_item)
 	return db_item
 
-# ユーザーアイテムの全削除
 @app.delete("/items", status_code=204)
 async def handle_delete_items(
-	cur_user: Annotated[UserEx01a, Depends(get_cur_users)],
+	cur_user: Annotated[UserEx01, Depends(get_cur_users)],
 	session: Annotated[Session, Depends(get_session)]
 ):
-	# ループでitemを削除
+	# ユーザーのitem情報をループして削除
 	for item in cur_user.items:
 		session.delete(item)
 	session.commit()
