@@ -3,7 +3,7 @@
 			- token											 - 完了
 			- user/register, users/me=delete, users/me/items - 完了
 			- items=post, items=delete						 - 完了
-			- engineの記述									 - まずdockerから
+			- engineの記述									 - イメージのビルドから
 			dockerイメージの作成							 - ymlの作成から
 			マイグレーションの作成
 
@@ -26,7 +26,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from jwt.exceptions import InvalidTokenError
 
-from ex34_01a.models import Token, User, Item, UserResponse, ItemResponse, UserEx01a, ItemEx01a
+from models import Token, User, Item, UserResponse, ItemResponse, UserEx01a, ItemEx01a
 # コンテナ内のappからの相対パスで記述
 
 load_dotenv()
