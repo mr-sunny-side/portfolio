@@ -1,15 +1,28 @@
+"""
+	- modelsからテーブルをインポート
+    - sqlmodelをインポートし、テーブルを読み込み
+    - DBのURLを環境変数から読み取り（docker）
+
+
+"""
+
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
-from ex34_01.models import ItemEx01, UserEx01
+from models import ItemEx01a, UserEx01a
 from sqlmodel import SQLModel
+import os
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# 環境変数からDBを読み取り
+database_url = os.environ.get("DATABASE_URL")
+config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -21,6 +34,7 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 target_metadata = SQLModel.metadata
+# インポートしたテーブルを読み込み
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

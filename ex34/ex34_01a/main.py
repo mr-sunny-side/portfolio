@@ -3,9 +3,10 @@
 			- token											 - 完了
 			- user/register, users/me=delete, users/me/items - 完了
 			- items=post, items=delete						 - 完了
-			- engineの記述									 - イメージのビルドから
-			dockerイメージの作成							 - ymlの作成から
-			マイグレーションの作成
+			- dockerイメージの作成							 - docker compose build --no-cacheから
+			- engineの記述									 -
+			- マイグレーションの作成						 - イメージ作成後、revisionから
+																(revision後、履歴ファイルにsqlmodelを追記)
 
 			ex34_01の復習から(全部書き直す)
 			- ex34a/ex34_01aとして復習用ディレクトリに作成

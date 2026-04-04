@@ -1,0 +1,30 @@
+services:
+
+  # FastAPIアプリコンテナの定義
+  api:
+    build: .          # このディレクトリのdockerfileでビルド
+    ports:
+      - "8000:8000"   # ホストPCとコンテナを接続するポート
+    environment:
+      DATABASE_URL: postgresql://ex33:secret@db:5432/ex33_db
+      # db:5432はデータベースの名前と、ローカルPCとの接続ポート
+    depends_on:
+      - db
+      # DBコンテナが起動してからAPIを起動する
+    volumes:
+      - ./alembic:/app/alembic
+      # コンテナ内でalembic revisionしたあと、
+      # 履歴ファイルにsqlmodelを追記するためにマウント
+
+  # PostgreSQLのコンテナ定義
+  db:
+    image: postgres:15  # dockerHub公式のイメージを使用
+    environment:
+      POSTGRES_USER: ex33
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: ex33_db
+    ports:
+      - "5433:5432"
+      # ローカルPCからpsqlコマンドを使う場合必要
+      # ローカルのpostgresqlが5432を専有しているので、
+      # ローカル側は5433
