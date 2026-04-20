@@ -12,7 +12,7 @@
 	 - users=delete										 - 完了
 	 - items=post										 - 完了
 	 - items=delete										 - 完了
-	 - コードのレビュー									 -
+	 - コードのレビュー									 - 修正から
 
 	 - dockerイメージの作成								 -
 	 - engineの記述(db:5433へ接続)						 -
