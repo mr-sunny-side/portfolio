@@ -1,11 +1,11 @@
 """
-	04-08: プロジェクトdirの環境構築から
+	### プロジェクトdirの環境構築から
 	 - 依存関係ファイルの作成(pip freeze > requirements.txt)	- 完了
 	 - 新規DBの作成(kimera:secret/ex34)							- 完了
 	 - alembicのインストール									- 完了
 	 - .envファイルの作成										- 完了
 
-	03-22:	アプリの構築
+	### アプリの構築
 	 - token											 - 完了
 	 - user/register									 - 完了
 	 - users=get										 - 完了
@@ -34,15 +34,16 @@ from dotenv import load_dotenv
 
 from models import User, UserResponse, UserDB, Item, ItemResponse, ItemDB, Token
 
+dummy_hasher = PasswordHash.recommended()
+KEY = os.environ("SECRET_KEY")
+ALGORITHM = os.environ("ALGORITHM")
+DUMMY = dummy_hasher.hash("dummy")
+DATABASE = os.environ("DATABASE_URL")	# ymlファイルで設定した環境変数から取得
+
 oauth2 = OAuth2PasswordBearer(tokenUrl="token")
 load_dotenv()
 app = FastAPI()
-engine = create_engine() # 後で入力
-dummy_hasher = PasswordHash.recommended()
-
-KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
-DUMMY = dummy_hasher.hash("dummy")
+engine = create_engine(DATABASE)	# 後で入力
 
 def get_session():
 	with Session(engine) as session:
@@ -94,7 +95,7 @@ def get_cur_users(
 
 	# トークンのデコード、ユーザー名の取得
 	try:
-		payload = jwt.decode(token, KEY, ALGORITHM)
+		payload = jwt.decode(token, KEY, [ALGORITHM])
 		username = payload.get("sub")
 		if not username:
 			raise error_detail
@@ -171,7 +172,8 @@ async def handle_delete_users(
 	session: Annotated[Session, Depends(get_session)]
 ):
 	# ユーザーアイテム、ユーザーの削除
-	session.delete(cur_user.items)
+	for item in cur_user.items:
+		session.delete(item)
 	session.delete(cur_user)
 	session.commit()
 	return Response(status_code=204)
@@ -179,7 +181,7 @@ async def handle_delete_users(
 # ユーザーアイテムの追加
 @app.post("/users/items")
 async def handle_add_items(
-	cur_user: Annotated[UserDB, Depends()],
+	cur_user: Annotated[UserDB, Depends(get_cur_users)],
 	item: Item,
 	session: Annotated[Session, Depends(get_session)]
 ) -> ItemResponse:
