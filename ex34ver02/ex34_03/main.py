@@ -1,9 +1,11 @@
 """
-	### プロジェクトdirの環境構築から
-	 - 依存関係ファイルの作成(pip freeze > requirements.txt)	-
-	 - 新規DBの作成(kimera:secret/ex34)							-
-	 - alembicのインストール									-
-	 - .envファイルの作成										-
+	### 04-24: Dockerfileの作成から
+
+	### 環境構築
+	 - 依存関係ファイルの作成(pip freeze > requirements.txt)	- 完了
+	 - 新規DBの作成(kimera:secret/ex34)							- 完了 ex34_03
+	 - alembicのインストール									- 完了
+	 - .envファイルの作成										- 完了
 
 	### アプリの構築
 	 - token				 - 完了
