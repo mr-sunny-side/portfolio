@@ -6,13 +6,13 @@
 	 - .envファイルの作成										- 完了
 
 	### アプリの構築
-	 - token			 - 完了
-	 - user/register	 - 完了
-	 - users=get		 - 完了
-	 - users=delete		 - 完了
-	 - items=post		 - 完了
-	 - items=delete		 - 完了
-	 - コードのレビュー	 -
+	 - token				 - 完了
+	 - user/register		 - 完了
+	 - users=get(認証なし)	 - 完了
+	 - users=delete			 - 完了
+	 - items=post			 - 完了
+	 - items=delete			 - 完了
+	 - コードのレビュー		 -
 
 	 - dockerイメージの作成								 - yml記述まで完了。コンテナの作成から
 	 - engineの記述(db:5433へ接続)						 -
