@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # コンテナの所有権を指定のユーザーに付与
 # もとの所有権はルートになっている
-# UIDは監修に従い1000以降にする
+# UIDは慣習に従い1000以降にする
 RUN useradd -m -u 1000 kimera && chown -R kimera:kimera /app
 ### useradd コマンド
 # kimeraというユーザーを作成し、uidを1000に指定

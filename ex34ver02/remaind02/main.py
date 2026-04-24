@@ -35,9 +35,9 @@ from models import User, Item, UserResponse, ItemResponse, UserDB, ItemDB, Token
 
 HASHER = PasswordHash.recommended()
 DUMMY = HASHER.hash("dummy")
-DATABASE_URL = os.environ("DATABASE_URL")	# ymlファイルで設定した環境変数からURLを取得
-KEY = os.environ("SECRET_KEY")
-ALGORITHM = os.environ("ALGORITHM")
+DATABASE_URL = os.environ["DATABASE_URL"]	# ymlファイルで設定した環境変数からURLを取得
+KEY = os.environ["SECRET_KEY"]
+ALGORITHM = os.environ["ALGORITHM"]
 
 app = FastAPI()
 engine = create_engine(DATABASE_URL)

@@ -4,14 +4,19 @@ services:
     build: .  # このディレクトリのdockerfileを使ってビルド
     ports:
       - "8000:8000" # ホストコンテナのポートマッピング
+    env_file:
+      - .env # .envファイルをコンテナに渡す
     environment:
       DATABASE_URL: postgresql://kimera:secret@db:5432/ex34
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    # マウントしたファイルの反映
     depends_on:
       - db  # dbコンテナが起動してからapiを起動する
     volumes:
       - ./alembic:/app/alembic
+      - ./main.py:/app/main.py
+      - ./models.py:/app/models.py
       # ローカルからファイルをいじるためにマウント
-      # この場合は、履歴ファイルへの追記のために利用
 
   db:
     image: postgres:15  # DBコンテナの
@@ -20,5 +25,5 @@ services:
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: ex34
     ports:
-      -"5433:5432"
+      - "5433:5432"
       # ローカルの5432ポートはpostgreが専有しているので、5433を指定
