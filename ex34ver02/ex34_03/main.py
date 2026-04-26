@@ -1,17 +1,18 @@
 """
-	### 04-24: Dockerfileの作成から
+	### 04-24: テストから
 
 	### 環境構築
 	 - 依存関係ファイルの作成(pip freeze > requirements.txt)	- 完了
-	 - 新規DBの作成(kimera:secret/ex34)							- 完了 ex34_03
+	 - 新規DBの作成												- 完了 ex34_03
 	 - alembicのインストール									- 完了
 	 - .envファイルの作成										- 完了
 
 	### アプリの構築
 	 - token				 - 完了
-	 - user/register		 - 完了
+	 - user/register		 - 完了 認証無しで追加可能、重複が発生
 	 - users=get(認証なし)	 - 完了
 	 - users=delete			 - 完了
+	 - items=get(認証なし)	 -
 	 - items=post			 - 完了
 	 - items=delete			 - 完了
 	 - コードのレビュー		 -

@@ -30,9 +30,9 @@ class User(BaseModel):
 class UserResponse(BaseModel):
 	id: int
 	username: str
-	password: str
 	email: str | None
 	disabled: bool
+	items: list[ItemResponse] = []
 
 class UserDB(SQLModel, table=True):
 	id: int = Field(default=None, primary_key=True)
@@ -40,4 +40,5 @@ class UserDB(SQLModel, table=True):
 	password: str
 	email: str | None
 	disabled: bool
-	items: list["ItemResponse"] = []
+	items: list["ItemDB"] = Relationship(back_populates="owner")
+	# 同じsqlテーブルのItemDB出ないと使えない

@@ -1,0 +1,48 @@
+services:
+
+  # fastapiのアプリ定義
+  api:
+    # このディレのdockerfileでビルド
+    build: .
+    # ホストとコンテナのポートマッピング
+    ports:
+      - "8000:8000"
+    # .envファイルを追加
+    env_file:
+      - .env
+    # マウントしたファイルの編集を反映する設定
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    # DBのURLを指定
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    # DBの起動後にapiを起動
+    depends_on:
+      - db
+    # alembicファイルをマウント
+    volumes:
+      - ./alembic:/app/alembic
+
+  # postgreのコンテナ定義
+  db:
+    # postgreの公式イメージを取得
+    image: postgres:15
+    environment:
+      # リスト形式ではkey=value, マップ形式ではkey: value
+      # ユーザー
+      # パスワード
+      # DB名
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # ローカルとDBコンテナのポートマッピング
+    ports:
+      - "5433:5432"
+    # DBのデータの置き場所を指定
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+# DBのデータを指定場所に作成
+# 指定通りにファイルを作成
+### 指定したファイルはまだ存在しないため、dockerに作成してもらう
+volumes:
+  postgres_data:
