@@ -18,7 +18,7 @@ def test_main(client):
 
 	# ユーザーの参照
 	res = client.get("/users")
-	assert res.json() == {"id": 1, "username": "kimera", "email": None, "disabled": False, "items": []}
+	assert res.json() == [{"id": 1, "username": "kimera", "email": None, "disabled": False, "items": []}]
 
 	# トークンの取得
 	res = client.post(
@@ -30,8 +30,9 @@ def test_main(client):
 
 	# ユーザーアイテムの登録
 	res = client.post(
-		"/items/register", json={"name": "apple", "price": 300},
-		headers={f"Authorization:": f"Bearer {token}"},
+		"/items/register",
+		json={"name": "apple", "price": 300},
+		headers={f"Authorization": f"Bearer {token}"},
 	)
 	assert res.status_code == 200
 	assert res.json() == {"id": 1, "user_id": 1, "name": "apple", "price": 300}
@@ -43,7 +44,7 @@ def test_main(client):
 	# itemsの削除
 	res = client.delete(
 		"/items/1",
-		headers={f"Authorization:": f"Bearer {token}"},
+		headers={f"Authorization": f"Bearer {token}"},
 	)
 	assert res.status_code == 204
 
@@ -54,11 +55,11 @@ def test_main(client):
 	# ユーザー、アイテムの一括削除
 	res = client.post(
 		"/items/register", json={"name": "apple", "price": 300},
-		headers={f"Authorization:": f"Bearer {token}"},
+		headers={f"Authorization": f"Bearer {token}"},
 	)
 	res = client.delete(
 		"/users",
-		headers={f"Authorization:": f"Bearer {token}"},
+		headers={f"Authorization": f"Bearer {token}"},
 	)
 	res = client.get("/users")
 	assert res.json() == []

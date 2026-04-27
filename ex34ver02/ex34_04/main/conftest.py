@@ -1,6 +1,7 @@
 import os
 import pytest
 from sqlmodel import create_engine, Session, SQLModel
+from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 import models
 
@@ -20,7 +21,12 @@ from main import app, get_session
 # テスト用のエンジンの作成(メモリで動作し、終了時に消滅)
 SQLITE_URL = "sqlite://"
 # 複数スレッドからの接続を許可
-engine = create_engine(SQLITE_URL, connect_args={"check_same_thread": False})
+# 接続の際に一つのDBを共有するため、StaticPoolを指定
+engine = create_engine(
+	SQLITE_URL,
+	connect_args={"check_same_thread": False},
+	poolclass=StaticPool
+)
 
 # テストで使うセッション関数を作成
 def override_get_session():

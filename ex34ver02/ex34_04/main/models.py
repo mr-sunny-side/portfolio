@@ -19,20 +19,20 @@ class ItemDB(SQLModel, table=True):
 	id: int = Field(default=None, primary_key=True)
 	user_id: int = Field(default=None, foreign_key="userdb.id")
 	name: str
-	price: str
+	price: int
 	owner: "UserDB" = Relationship(back_populates="items")
 
 class User(BaseModel):
 	username: str
 	password: str
 	email: str | None = None
-	disable: bool = False
+	disabled: bool = False
 
 class UserResponse(BaseModel):
 	id: int
 	username: str
 	email: str | None
-	disable: bool
+	disabled: bool
 	items: list[ItemResponse] = []
 
 class UserDB(SQLModel, table=True):
@@ -40,5 +40,5 @@ class UserDB(SQLModel, table=True):
 	username: str
 	password: str
 	email: str | None
-	disable: bool
-	items: "ItemDB" = Relationship(back_populates="owner")
+	disabled: bool
+	items: list["ItemDB"] = Relationship(back_populates="owner")

@@ -136,7 +136,7 @@ async def handle_token(
 	# 有効期限の設定、トークンの作成
 	token_expire = timedelta(minutes=30)
 	token = create_token(
-		user_sub={"sub", db_user.username},
+		user_sub={"sub": db_user.username},
 		token_expire=token_expire
 	)
 	return Token(
