@@ -2,10 +2,10 @@
 	### 04-24: テストから
 
 	### 環境構築
-	 - 依存関係ファイルの作成(pip freeze > requirements.txt)	- ここから
-	 - 新規DBの作成												-
-	 - alembicのインストール									-
-	 - .envファイルの作成										-
+	 - 依存関係ファイルの作成(pip freeze > requirements.txt)	- 完了
+	 - 新規DBの作成												- 完了
+	 - alembicのインストール									- 完了
+	 - .envファイルの作成										- 完了
 
 	### アプリの構築
 	 - token				 - 完了
@@ -15,7 +15,13 @@
 	 - items=get(認証なし)	 - 完了
 	 - items/register=post	 - 完了
 	 - items=delete			 - 完了
-	 - コードのレビュー		 -
+
+	 - alembicの設定を修正	 - 完了
+	 - alembic versionファイルを作成 - 完了
+	 - アプリのテスト		 - 完了
+	 - conftest.pyの作成	 - 完了
+	 - test_main.pyの作成	 - ここから
+
 
 
 """
@@ -32,16 +38,17 @@ from jwt.exceptions import InvalidTokenError
 
 from models import User, Item, UserResponse, ItemResponse, UserDB, ItemDB, Token
 
-HASHER = PasswordHash.recommended()
-DUMMY = HASHER.hash("dummy_hash")
-DATABASE_URL = os.environ("DATABASE_URL")
-KEY = os.environ("SECRET_KEY")
-ALGORITHM = os.environ("ALGORITHM")
-
 load_dotenv()
 app = FastAPI()
-engine = create_engine(DATABASE_URL)
 oauth2 = OAuth2PasswordBearer(tokenUrl="token")
+
+HASHER = PasswordHash.recommended()
+DUMMY = HASHER.hash("dummy_hash")
+DATABASE_URL = os.environ["DATABASE_URL"]
+KEY = os.environ["SECRET_KEY"]
+ALGORITHM = os.environ["ALGORITHM"]
+
+engine = create_engine(DATABASE_URL)
 
 def get_session():
 	with Session(engine) as session:

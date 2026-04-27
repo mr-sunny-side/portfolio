@@ -15,7 +15,7 @@ class ItemResponse(BaseModel):
 	name: str
 	price: int
 
-class ItemDB(SQLModel):
+class ItemDB(SQLModel, table=True):
 	id: int = Field(default=None, primary_key=True)
 	user_id: int = Field(default=None, foreign_key="userdb.id")
 	name: str

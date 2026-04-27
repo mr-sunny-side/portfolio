@@ -22,7 +22,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Response, Path
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlmodel import Session, create_engine, select
-from dotenv import load_dotenv
 import os
 from typing import Annotated
 from pwdlib import PasswordHash
