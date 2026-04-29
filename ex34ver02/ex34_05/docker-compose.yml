@@ -1,0 +1,30 @@
+services:
+
+  # fastapiのコンテナ設定
+  api:
+    build: .  # カレントのdockerfileを使ってビルド
+    ports:
+      - "8000:8000" # ホスト:コンテナのポートマッピング
+    env_file:
+      - .env  # .envファイルから環境変数を読み込み
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    environment:  # 読み込んだ環境変数を展開
+      DATABASE_URL: ${DATABASE_URL} # databaseのurlを指定
+    depends_on:
+      - db  # db起動後にapiを起動
+    volumes:
+      -./alembic:/app/alembic # コンテナ内のalembicファイルをマウント
+
+    db:
+      image: postgres:15  # alembicの公式イメージを指定
+      environment:  # 環境変数からDBの値を指定
+        POSTGRES_USER: ${POSTGRES_USER}
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        POSTGRES_DB: ${POSTGRES_DB}
+      ports:
+      - "5433:5432" # ホストとコンテナDBのポートマッピング
+      volumes:
+        - postgres_data:/var/lib/postgresql/data  # DBのデータを保存するパスに接続
+
+volumes:
+  postgres_data:  # DBデータを保存するパスの宣言
