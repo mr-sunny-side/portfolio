@@ -9,9 +9,9 @@
 	 - .env.example作成											- 完了
 
 	 - dockerfile, docker-composeの作成	 - 完了
-	 - alembicの設定を修正				 - ここから
+	 - alembicの設定を修正				 - 完了
 	 - alembic versionファイルを作成	 - コンテナのテスト時に作成
-	 - conftest.pyの作成				 -
+	 - conftest.pyの作成				 - ここから
 	 - test_main.pyの作成				 -
 	 - dockerignoreの追加				 -
 	 - アプリのテスト					 -
