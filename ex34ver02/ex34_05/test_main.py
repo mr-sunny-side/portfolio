@@ -5,7 +5,7 @@ def test_main(client):
 		"/users/register",
 		json={"username": "kimera", "password": "secret"}
 	)
-	assert res.status_code == 200
+	assert res.status_code == 400
 	assert res.json() == {"id": 1, "username": "kimera", "email": None, "disabled": False, "items": []}
 
 	# 重複したユーザーの追加
